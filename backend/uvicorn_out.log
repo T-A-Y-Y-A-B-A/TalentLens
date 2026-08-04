@@ -1,0 +1,2 @@
+{"error_id": "8195242c-b6cf-4bdb-ba5f-99cc70c7b7b2", "request_id": "unknown", "exc_info": true, "path": "/api/v1/auth/register", "method": "POST", "level": "error", "timestamp": "2026-08-04T13:37:29.790808Z", "message": "unhandled_exception"}
+INFO:     127.0.0.1:59520 - "POST /api/v1/auth/register HTTP/1.1" 500 Internal Server Error

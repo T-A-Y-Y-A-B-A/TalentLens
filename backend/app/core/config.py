@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
     POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: str = "5432"
+    POSTGRES_PORT: str = "5433"
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

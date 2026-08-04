@@ -44,6 +44,10 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     request_id = getattr(request.state, "request_id", "unknown")
     error_id = str(uuid.uuid4())
     logger.error("unhandled_exception", error_id=error_id, request_id=request_id, exc_info=True)
+    import traceback
+    with open("error.log", "a") as f:
+        f.write(f"\\n--- ERROR {error_id} ---\\n")
+        traceback.print_exc(file=f)
     return JSONResponse(
         status_code=500,
         content={

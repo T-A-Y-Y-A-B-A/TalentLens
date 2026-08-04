@@ -23,8 +23,8 @@ const registerSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .regex(/[0-9]/, 'Password must contain at least one number'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
-  agreeTerms: z.literal(true, {
-    errorMap: () => ({ message: 'You must agree to the Terms of Service and Privacy Policy' }),
+  agreeTerms: z.boolean().refine((val) => val === true, {
+    message: 'You must agree to the Terms of Service and Privacy Policy',
   }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -53,6 +53,7 @@ export default function RegisterPage() {
       organizationName: '',
       password: '',
       confirmPassword: '',
+      agreeTerms: false,
     },
   });
 
@@ -65,9 +66,8 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: data.fullName,
           email: data.email,
-          organization_name: data.organizationName,
+          org_name: data.organizationName,
           password: data.password,
         }),
       });

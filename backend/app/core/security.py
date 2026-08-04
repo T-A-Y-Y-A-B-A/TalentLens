@@ -2,7 +2,7 @@ import os
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Union, Optional
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt, JWTError
 import casbin
 import redis.asyncio as redis
@@ -14,13 +14,14 @@ from app.core.config import settings
 redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except ValueError:
+        return False
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 # JWT
 def _get_secret_key() -> str:

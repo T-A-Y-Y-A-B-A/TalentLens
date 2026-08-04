@@ -80,10 +80,8 @@ function Navbar() {
 
         <div className="md:hidden">
           <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open menu">
-                <Menu className="h-6 w-6 text-zinc-900" />
-              </Button>
+            <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
+              <Menu className="h-6 w-6 text-zinc-900" />
             </SheetTrigger>
             <SheetContent side="right" className="bg-white p-6">
                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
@@ -142,11 +140,9 @@ function Hero() {
             </Button>
 
             <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="lg" className="rounded-xl font-semibold h-12 px-8 w-full sm:w-auto border-zinc-200 hover:bg-zinc-50 hover:text-indigo-600">
-                  <PlayCircle className="mr-2 h-5 w-5" />
-                  Watch Demo
-                </Button>
+              <DialogTrigger render={<Button variant="outline" size="lg" className="rounded-xl font-semibold h-12 px-8 w-full sm:w-auto border-zinc-200 hover:bg-zinc-50 hover:text-indigo-600" />}>
+                <PlayCircle className="mr-2 h-5 w-5" />
+                Watch Demo
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl p-0 overflow-hidden bg-zinc-950 border-none rounded-2xl">
                 <DialogHeader className="sr-only">
