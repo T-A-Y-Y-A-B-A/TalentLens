@@ -1,0 +1,34 @@
+# Environments
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next/
+out/
+build/
+node_modules/
+.eslintcache
+.vercel
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+env/
+.venv/
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+backend/alembic/versions/*
+!backend/alembic/versions/.keep

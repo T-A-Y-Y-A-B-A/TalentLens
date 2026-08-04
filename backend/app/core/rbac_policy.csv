@@ -1,0 +1,17 @@
+p, hr_manager, organization, read
+p, hr_manager, organization, update
+p, hr_manager, users, read
+p, hr_manager, users, update
+p, hr_manager, departments, manage
+p, hr_manager, jobs, manage
+p, hr_manager, candidates, manage
+p, hr_manager, applications, manage
+
+p, recruiter, jobs, read
+p, recruiter, candidates, manage
+p, recruiter, applications, manage
+
+p, interviewer, interviews, read
+p, interviewer, interviews, update
+
+g, hr_manager, recruiter
