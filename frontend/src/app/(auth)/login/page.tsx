@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { apiClient } from '@/lib/api/client';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
@@ -25,6 +27,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const { login } = useAuth();
+
   const {
     register,
     handleSubmit,
@@ -37,25 +41,25 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setApiError(null);
     try {
-      const res = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+      const { data: resData, error, response } = await apiClient.POST('/api/v1/auth/login', {
+        body: data,
       });
 
-      if (!res.ok) {
-        if (res.status === 401) {
+      if (error) {
+        if (response.status === 401) {
           setApiError('Invalid email or password');
+        } else if (response.status === 403) {
+          setApiError('Email not verified. Please check your inbox.');
         } else {
           setApiError('An unexpected error occurred. Please try again.');
         }
         return;
       }
-      const dataJson = await res.json();
-      if (dataJson.access_token) {
-        localStorage.setItem('token', dataJson.access_token);
+      
+      if (resData?.access_token) {
+        login(resData.access_token);
+        router.push('/dashboard');
       }
-      router.push('/dashboard');
     } catch (err) {
       setApiError('Failed to connect to the server. Please try again.');
     }

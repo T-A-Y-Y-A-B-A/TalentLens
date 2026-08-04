@@ -41,13 +41,18 @@ async def domain_exception_handler(request: Request, exc: DomainException) -> JS
     )
 
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    from fastapi.exceptions import RequestValidationError
+    
+    if isinstance(exc, StarletteHTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        
+    if isinstance(exc, RequestValidationError):
+        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
     request_id = getattr(request.state, "request_id", "unknown")
     error_id = str(uuid.uuid4())
     logger.error("unhandled_exception", error_id=error_id, request_id=request_id, exc_info=True)
-    import traceback
-    with open("error.log", "a") as f:
-        f.write(f"\\n--- ERROR {error_id} ---\\n")
-        traceback.print_exc(file=f)
     return JSONResponse(
         status_code=500,
         content={

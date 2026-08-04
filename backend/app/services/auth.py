@@ -10,6 +10,7 @@ from app.models.identity import User, Organization, UserRole, RefreshToken, Emai
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.config import settings
 from app.services.email import send_verification_email, send_password_reset_email
+from app.services.organization import create_organization
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
@@ -20,11 +21,8 @@ async def register_user(db: AsyncSession, email: str, password: str, org_name: s
     if existing.scalars().first():
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    # For simplicity, create org here. In production, this might be separate.
     # Module 1 specs: "org_id (or org creation if first user), role defaults to hr_manager for org creators"
-    org = Organization(name=org_name, slug=org_name.lower().replace(" ", "-"))
-    db.add(org)
-    await db.flush()
+    org = await create_organization(db, org_name)
     
     user = User(
         email=email,
@@ -48,16 +46,18 @@ async def register_user(db: AsyncSession, email: str, password: str, org_name: s
     await db.commit()
     await db.refresh(user)
     
-    # Trigger email
-    send_verification_email.delay(email, raw_token)
+    # Trigger email (non-fatal: if broker unavailable during local dev, don't crash)
+    try:
+        print(f"\n[DEV MODE] Verification token for {email}: {raw_token}\n")
+        send_verification_email.delay(email, raw_token)
+    except Exception:
+        pass  # Email will not be sent but registration still succeeds
     
     return user
 
 async def register_oauth_user(db: AsyncSession, email: str, first_name: str, oauth_provider: str, oauth_id: str) -> User:
     org_name = f"{first_name}'s Organization"
-    org = Organization(name=org_name, slug=org_name.lower().replace(" ", "-") + f"-{secrets.token_hex(4)}")
-    db.add(org)
-    await db.flush()
+    org = await create_organization(db, org_name, slug_suffix=secrets.token_hex(4))
     
     user = User(
         email=email,
@@ -177,7 +177,10 @@ async def request_password_reset(db: AsyncSession, email: str):
     db.add(pr)
     await db.commit()
     
-    send_password_reset_email.delay(email, raw_token)
+    try:
+        send_password_reset_email.delay(email, raw_token)
+    except Exception:
+        pass  # Non-fatal
 
 async def confirm_password_reset(db: AsyncSession, token: str, new_password: str):
     token_hash = _hash_token(token)

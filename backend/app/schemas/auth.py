@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_serializer
 from typing import Optional
+from uuid import UUID
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -25,12 +26,15 @@ class EmailVerify(BaseModel):
     token: str
 
 class UserProfile(BaseModel):
-    id: str
+    id: UUID
     email: str
-    org_id: str
+    org_id: UUID
     role: str
     is_platform_admin: bool
     is_verified: bool
-    
-    class Config:
-        from_attributes = True
+
+    model_config = {"from_attributes": True}
+
+    @field_serializer("id", "org_id")
+    def serialize_uuid(self, v: UUID) -> str:
+        return str(v)

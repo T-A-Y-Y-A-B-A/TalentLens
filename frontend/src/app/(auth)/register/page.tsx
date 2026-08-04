@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { apiClient } from '@/lib/api/client';
 
 const registerSchema = z.object({
   fullName: z.string().min(2, 'Full Name must be at least 2 characters'),
@@ -62,19 +63,16 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setApiError(null);
     try {
-      const res = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data: resData, error, response } = await apiClient.POST('/api/v1/auth/register', {
+        body: {
           email: data.email,
           org_name: data.organizationName,
           password: data.password,
-        }),
+        }
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        // Basic handling, assuming FastAPI returns standard HTTPValidationError or a custom detail string
+      if (error) {
+        const errorData = error as any;
         if (errorData && errorData.detail) {
           if (typeof errorData.detail === 'string') {
              setApiError(errorData.detail);

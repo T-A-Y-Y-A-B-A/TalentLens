@@ -34,6 +34,14 @@ def _create_audit_log(
     )
     db.add(audit)
 
+async def create_organization(db: AsyncSession, name: str, slug_suffix: Optional[str] = None) -> Organization:
+    base_slug = name.lower().replace(" ", "-")
+    slug = f"{base_slug}-{slug_suffix}" if slug_suffix else base_slug
+    org = Organization(name=name, slug=slug)
+    db.add(org)
+    await db.flush()
+    return org
+
 async def get_organization(db: AsyncSession, org_id: uuid.UUID, current_user: User) -> Organization:
     if current_user.org_id != org_id and not current_user.is_platform_admin:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -110,7 +118,7 @@ async def change_user_role(
     user_agent: Optional[str] = None,
     request_id: Optional[str] = None
 ) -> User:
-    enforce_role(current_user.role.value, "users", "update_role")
+    enforce_role(current_user.role.value, "users", "update")
     
     if current_user.org_id != org_id and not current_user.is_platform_admin:
         raise HTTPException(status_code=404, detail="Organization not found")

@@ -61,10 +61,17 @@ async def test_org_isolation(async_client: AsyncClient, db_session: AsyncSession
     # We will just change user A's role manually in DB, or create a new user C
     resp_c = await async_client.post(
         "/api/v1/auth/register",
-        json={"email": f"userc_{uuid.uuid4()}@a.com", "password": "Password123", "org_name": "dummy"}
+        json={"email": f"userc_{uuid.uuid4()}@a.com", "password": "Password123", "org_name": f"Org C {uuid.uuid4()}"}
     )
     user_c = resp_c.json()
-    await db_session.execute(text(f"UPDATE users SET is_verified = true, org_id = '{user_a['org_id']}', role = 'recruiter' WHERE email = '{user_c['email']}'"))
+    from sqlalchemy import select
+    from app.models.identity import User
+    
+    res = await db_session.execute(select(User).where(User.email == user_c['email']))
+    db_user_c = res.scalar_one()
+    db_user_c.is_verified = True
+    db_user_c.org_id = user_a['org_id']
+    db_user_c.role = "recruiter"
     await db_session.commit()
     
     login_c = await async_client.post("/api/v1/auth/login", json={"email": user_c['email'], "password": "Password123"})

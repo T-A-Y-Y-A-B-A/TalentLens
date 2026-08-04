@@ -219,8 +219,8 @@ export default function OrganizationPage() {
                     {canEdit ? (
                       <Select 
                         value={user.role} 
-                        onValueChange={(val) => {
-                          if (val !== user.role) {
+                        onValueChange={(val: string | null) => {
+                          if (val && val !== user.role) {
                             setRoleChangeTarget({ user, newRole: val });
                           }
                         }}
