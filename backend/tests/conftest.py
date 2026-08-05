@@ -32,18 +32,51 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 # ---------------------------------------------------------------------------
 # 1. Mock Redis BEFORE importing any app module that touches it
 # ---------------------------------------------------------------------------
+_redis_state = {}
+
+async def _mock_redis_get(key, *args, **kwargs):
+    return _redis_state.get(key)
+
+async def _mock_redis_setex(key, time, value, *args, **kwargs):
+    _redis_state[key] = value
+    return True
+
+def _mock_sync_redis_setex(key, time, value, *args, **kwargs):
+    _redis_state[key] = value
+    return True
+
 _mock_redis = AsyncMock()
-_mock_redis.get = AsyncMock(return_value=None)
-_mock_redis.setex = AsyncMock(return_value=True)
+_mock_redis.get = AsyncMock(side_effect=_mock_redis_get)
+_mock_redis.setex = AsyncMock(side_effect=_mock_redis_setex)
 _mock_redis.delete = AsyncMock(return_value=True)
+_mock_redis.aclose = AsyncMock(return_value=None)
 
 import app.core.security as security_module
 security_module.redis_client = _mock_redis
+
+import redis
+import redis.asyncio
+
+def _mock_async_from_url(*args, **kwargs):
+    return _mock_redis
+
+_mock_sync_redis = MagicMock()
+_mock_sync_redis.setex = MagicMock(side_effect=_mock_sync_redis_setex)
+
+def _mock_sync_from_url(*args, **kwargs):
+    return _mock_sync_redis
+
+redis.asyncio.Redis.from_url = _mock_async_from_url
+redis.Redis.from_url = _mock_sync_from_url
 
 # Mock celery tasks to prevent hanging trying to connect to Redis broker
 import app.services.email as email_service
 email_service.send_verification_email = MagicMock()
 email_service.send_password_reset_email = MagicMock()
+
+import app.workers.tasks.matching as matching_tasks
+matching_tasks.match_candidates_task = MagicMock()
+matching_tasks.match_candidates_task.delay = MagicMock()
 
 # ---------------------------------------------------------------------------
 # 2. Import the FastAPI app and models

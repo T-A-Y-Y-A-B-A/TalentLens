@@ -1,30 +1,56 @@
 import uuid
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, Boolean
+from datetime import datetime
+from sqlalchemy import Column, String, DateTime, ForeignKey, Float, Boolean, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from .base import Base, TimestampMixin, TenantMixin, GUID, JSONType
+from app.models.base import Base, JSONType
 
-class AiMatchResult(Base, TimestampMixin):
+class AIMatchResult(Base):
     __tablename__ = "ai_match_results"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    candidate_id = Column(UUID(as_uuid=True), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    application_id = Column(GUID(), ForeignKey("applications.id"), index=True, nullable=False)
     match_pct = Column(Float, nullable=False)
-    missing_skills = Column(JSONType(), default=[])
-    strengths = Column(JSONType(), default=[])
-    weaknesses = Column(JSONType(), default=[])
+    missing_skills = Column(JSONType, nullable=False, default=list)
+    strengths = Column(JSONType, nullable=False, default=list)
+    weaknesses = Column(JSONType, nullable=False, default=list)
     recommendation = Column(String, nullable=False)
+    interview_questions = Column(JSONType, nullable=False, default=list)
+
     prompt_version = Column(String, nullable=False)
-    model_used = Column(String, nullable=False)
-    generated_at = Column(String, nullable=False)
+    cache_key = Column(String, nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
-class AiUsageLog(Base, TimestampMixin, TenantMixin):
+    # Relationships
+    organization = relationship("Organization")
+    job = relationship("Job")
+    candidate = relationship("Candidate")
+
+
+class AIUsageLog(Base):
     __tablename__ = "ai_usage_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     
-    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    feature = Column(String, nullable=False) # matching/copilot/feedback/jd_generation
-    input_tokens = Column(Integer, nullable=False)
-    output_tokens = Column(Integer, nullable=False)
-    cost_usd = Column(Float, nullable=False)
-    latency_ms = Column(Float, nullable=False)
-    cache_hit = Column(Boolean, default=False)
+    endpoint = Column(String, nullable=False) # e.g. "POST /api/v1/jobs/{id}/match"
+    prompt_version = Column(String, nullable=False)
+    
+    # Metrics
+    prompt_tokens = Column(Float, nullable=False, default=0)
+    completion_tokens = Column(Float, nullable=False, default=0)
+    total_tokens = Column(Float, nullable=False, default=0)
+    latency_ms = Column(Float, nullable=False, default=0)
+    
+    cache_hit = Column(Boolean, nullable=False, default=False)
+    candidates_matched = Column(Float, nullable=False, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    organization = relationship("Organization")
+    user = relationship("User")

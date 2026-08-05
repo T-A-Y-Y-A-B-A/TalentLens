@@ -1,6 +1,14 @@
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-# Using in-memory fallback for now, in prod this should use redis
-# e.g., default_limits=["200 per day", "50 per hour"]
-limiter = Limiter(key_func=get_remote_address)
+from app.core.config import settings
+
+from fastapi import Request
+
+def get_auth_header(request: Request):
+    return request.headers.get("Authorization", get_remote_address(request))
+
+limiter = Limiter(
+    key_func=get_auth_header,
+    storage_uri="memory://"
+)

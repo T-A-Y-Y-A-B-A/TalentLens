@@ -1,9 +1,9 @@
 from .base import Base, TenantMixin, TimestampMixin, GUID, JSONType
 from .identity import User, Organization, RefreshToken, PasswordReset, EmailVerification
 from .recruitment import Department, Job, PipelineStage, JobEmbedding
-from .candidate import Candidate, Resume, ResumeParsedData, CandidateEmbedding
+from app.models.candidate import Candidate, Resume, ResumeParsedData, CandidateEmbedding
+from app.models.ai import AIMatchResult, AIUsageLog
 from .application import Application, ApplicationStageHistory
-from .ai import AiMatchResult, AiUsageLog
 from .interview import Interview, InterviewFeedback
 from .support import Notification, AuditLog
 
@@ -26,8 +26,8 @@ __all__ = [
     "CandidateEmbedding",
     "Application",
     "ApplicationStageHistory",
-    "AiMatchResult",
-    "AiUsageLog",
+    "AIMatchResult",
+    "AIUsageLog",
     "Interview",
     "InterviewFeedback",
     "Notification",

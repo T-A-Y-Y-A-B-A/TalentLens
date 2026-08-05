@@ -20,7 +20,7 @@ T = TypeVar('T', bound=BaseModel)
 async def call_llm(
     prompt: str,
     response_model: Type[T],
-    model: str = "claude-3-5-sonnet-20240620",
+    model: str = "groq/llama3-70b-8192",
     system_prompt: str = "You are a helpful AI assistant.",
     temperature: float = 0.0,
     **kwargs: Any

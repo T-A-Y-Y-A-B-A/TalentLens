@@ -6,11 +6,13 @@ from app.core.logging import setup_logging, configure_logging_middleware
 from app.api.v1 import health, auth
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
 from app.core.rate_limit import limiter
 from app.api.v1.departments import router as departments_router
 from app.api.v1.jobs import router as jobs_router
 from app.api.v1.candidates import router as candidates_router
 from app.api.v1.applications import router as applications_router
+from app.api.v1.matching import router as matching_router
 
 # Setup logging before app creation
 setup_logging()
@@ -31,6 +33,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -63,6 +66,7 @@ app.include_router(departments_router, prefix=settings.API_V1_STR)
 app.include_router(jobs_router, prefix=settings.API_V1_STR)
 app.include_router(candidates_router, prefix=settings.API_V1_STR)
 app.include_router(applications_router, prefix=settings.API_V1_STR)
+app.include_router(matching_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
