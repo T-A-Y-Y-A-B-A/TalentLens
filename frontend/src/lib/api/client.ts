@@ -39,8 +39,13 @@ const authMiddleware: Middleware = {
       if (request.url.includes("/auth/refresh")) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
-          if (window.location.pathname !== "/login" && window.location.pathname !== "/" && !window.location.pathname.startsWith("/register")) {
-            window.location.href = "/login";
+          const path = window.location.pathname;
+          if (path !== "/login" && path !== "/" && !path.startsWith("/register") && !path.startsWith("/candidate/login") && !path.startsWith("/candidate/register")) {
+            if (path.startsWith("/candidate")) {
+              window.location.href = "/candidate/login";
+            } else {
+              window.location.href = "/login";
+            }
           }
         }
         return response;
@@ -96,8 +101,13 @@ const authMiddleware: Middleware = {
         isRefreshing = false;
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
-          if (window.location.pathname !== "/login" && window.location.pathname !== "/" && !window.location.pathname.startsWith("/register")) {
-            window.location.href = "/login";
+          const path = window.location.pathname;
+          if (path !== "/login" && path !== "/" && !path.startsWith("/register") && !path.startsWith("/candidate/login") && !path.startsWith("/candidate/register")) {
+            if (path.startsWith("/candidate")) {
+              window.location.href = "/candidate/login";
+            } else {
+              window.location.href = "/login";
+            }
           }
         }
         return response;

@@ -25,11 +25,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      const { data, error } = await apiClient.GET("/api/v1/auth/me");
-      if (data) {
-        setUser(data as UserProfile);
+      if (pathname?.startsWith("/candidate")) {
+        const { data } = await apiClient.GET("/api/v1/candidate-portal/me");
+        if (data) {
+          setUser({ ...data, role: "candidate" } as any);
+        } else {
+          setUser(null);
+        }
       } else {
-        setUser(null);
+        const { data } = await apiClient.GET("/api/v1/auth/me");
+        if (data) {
+          setUser(data as UserProfile);
+        } else {
+          setUser(null);
+        }
       }
     } catch (err) {
       setUser(null);
@@ -56,7 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       localStorage.removeItem("access_token");
       setUser(null);
-      router.push("/login");
+      if (pathname?.startsWith("/candidate")) {
+        router.push("/candidate/login");
+      } else {
+        router.push("/login");
+      }
     }
   };
 

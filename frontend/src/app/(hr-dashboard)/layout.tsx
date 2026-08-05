@@ -31,8 +31,8 @@ export default function HRDashboardLayout({
     );
   }
 
-  // Basic role check - must be logged in and have HR role
-  if (!user || !checkRole(["hr_manager", "hr_admin", "recruiter"])) {
+  // Basic role check - must be logged in and have valid role
+  if (!user || !checkRole(["super_admin", "hr_manager", "recruiter", "interviewer"])) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 p-4 text-center">
         <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>

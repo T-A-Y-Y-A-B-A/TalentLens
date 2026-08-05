@@ -43,6 +43,7 @@ function Navbar() {
     { name: 'Product', href: '#product' },
     { name: 'How it Works', href: '#how-it-works' },
     { name: 'Pricing', href: '#pricing' },
+    { name: 'For Candidates', href: '/candidate/login' },
   ];
 
   return (
@@ -595,7 +596,8 @@ function Footer() {
               <ul className="space-y-3">
                 <li><Link href="#features" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Features</Link></li>
                 <li><Link href="#pricing" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Pricing</Link></li>
-                <li><Link href="/login" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Sign In</Link></li>
+                <li><Link href="/login" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">HR Sign In</Link></li>
+                <li><Link href="/candidate/login" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Candidate Portal</Link></li>
               </ul>
             </div>
             <div>
