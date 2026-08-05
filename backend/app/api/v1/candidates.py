@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from uuid import UUID
@@ -6,7 +6,7 @@ from uuid import UUID
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.identity import User
-from app.schemas.candidate import CandidateCreate, CandidateUpdate, CandidateRead
+from app.schemas.candidate import CandidateCreate, CandidateUpdate, CandidateRead, ResumeRead
 from app.services.candidate import create_candidate, get_candidates, get_candidate, update_candidate
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
@@ -42,3 +42,34 @@ async def update_candidate_api(
     current_user: User = Depends(get_current_user)
 ):
     return await update_candidate(db, candidate_id, candidate_in, current_user)
+
+@router.post("/{candidate_id}/resume", response_model=ResumeRead, status_code=202)
+async def upload_resume_api(
+    candidate_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.services.candidate import upload_resume
+    return await upload_resume(db, candidate_id, file, current_user)
+
+@router.get("/{candidate_id}/resume/{resume_id}/download")
+async def download_resume_api(
+    candidate_id: UUID,
+    resume_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.services.candidate import get_resume_by_id
+    from fastapi.responses import FileResponse
+    import os
+    
+    resume = await get_resume_by_id(db, candidate_id, resume_id, current_user)
+    
+    # Resolves to absolute path based on CWD where the app runs
+    file_path = os.path.abspath(resume.file_url)
+    if not os.path.exists(file_path):
+        from app.core.exceptions import DomainException
+        raise DomainException("file_not_found", "The physical resume file was not found.", status_code=404)
+        
+    return FileResponse(file_path, filename=os.path.basename(file_path))

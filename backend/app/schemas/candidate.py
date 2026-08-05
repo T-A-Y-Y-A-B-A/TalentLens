@@ -38,7 +38,7 @@ class CandidateRead(CandidateBase):
 
 # ----------------- Resume Schemas -----------------
 class ResumeBase(BaseModel):
-    file_url: AnyHttpUrl
+    file_url: str
 
 class ResumeCreate(ResumeBase):
     candidate_id: UUID
@@ -50,7 +50,6 @@ class ResumeRead(ResumeBase):
     created_at: datetime
     updated_at: datetime
     
-    # Converting AnyHttpUrl back to string for easier frontend consumption
     file_url: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -65,3 +64,26 @@ class ResumeParsedDataRead(BaseModel):
     projects: List[Dict[str, Any]]
     
     model_config = ConfigDict(from_attributes=True)
+
+# ----------------- LLM Extraction Schemas -----------------
+class Experience(BaseModel):
+    title: str
+    company: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    description: Optional[str] = None
+
+class Education(BaseModel):
+    degree: str
+    institution: str
+    graduation_year: Optional[str] = None
+
+class ResumeExtraction(BaseModel):
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
+    experience: List[Experience] = Field(default_factory=list)
+    education: List[Education] = Field(default_factory=list)
+    certifications: List[str] = Field(default_factory=list)
+    projects: List[str] = Field(default_factory=list)

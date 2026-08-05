@@ -15,10 +15,20 @@ from app.api.v1.applications import router as applications_router
 # Setup logging before app creation
 setup_logging()
 
+from contextlib import asynccontextmanager
+from app.core.qdrant import init_qdrant
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize Qdrant collections on startup
+    await init_qdrant()
+    yield
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
 app.state.limiter = limiter
 
