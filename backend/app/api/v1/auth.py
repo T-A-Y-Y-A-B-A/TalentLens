@@ -107,38 +107,63 @@ async def password_reset_conf(request: Request, payload: PasswordResetConfirm, d
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
-@router.get("/oauth/google/login")
-async def google_login(request: Request):
-    redirect_uri = settings.GOOGLE_REDIRECT_URI
-    return await oauth.google.authorize_redirect(request, redirect_uri)
-
 @router.get("/oauth/google/callback")
-async def google_auth(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+async def google_auth(request: Request, response: Response, code: str, state: str, db: AsyncSession = Depends(get_db)):
+    import json
+    import base64
+    import httpx
+    
+    # decode state to find origin
+    origin = "/dashboard"
     try:
-        token = await oauth.google.authorize_access_token(request)
-    except OAuthError:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
-    
-    user_info = token.get('userinfo')
-    if not user_info or 'email' not in user_info:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
+        padded_state = state + '=' * (-len(state) % 4)
+        state_data = json.loads(base64.urlsafe_b64decode(padded_state))
+        origin = state_data.get("from", "/dashboard")
+    except Exception:
+        pass
+
+    try:
+        # exchange code -> tokens
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post("https://oauth2.googleapis.com/token", data={
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": settings.GOOGLE_REDIRECT_URI
+            })
+            token_resp.raise_for_status()
+            token_data = token_resp.json()
+            
+            # get user info
+            userinfo_resp = await client.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={
+                "Authorization": f"Bearer {token_data['access_token']}"
+            })
+            userinfo_resp.raise_for_status()
+            user_info = userinfo_resp.json()
+            
+        if not user_info or 'email' not in user_info:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+            
+        email = user_info['email']
+        first_name = user_info.get('given_name', 'User')
+        oauth_id = user_info.get('sub')
         
-    email = user_info['email']
-    first_name = user_info.get('given_name', 'User')
-    oauth_id = user_info.get('sub')
-    
-    # Check if user exists
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalars().first()
-    
-    if not user:
-        # Register new user
-        user = await register_oauth_user(db, email, first_name, "google", oauth_id)
-    
-    # Create tokens
-    access_token, refresh_token = await create_tokens(db, user)
-    _set_refresh_cookie(response, refresh_token)
-    
-    from fastapi.responses import RedirectResponse
-    # Redirect to frontend dashboard with access token
-    return RedirectResponse(url=f"{settings.FRONTEND_URL}/dashboard?token={access_token}")
+        # Check if user exists
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalars().first()
+        
+        if not user:
+            # Register new user
+            user = await register_oauth_user(db, email, first_name, "google", oauth_id)
+        
+        # Create tokens
+        access_token, refresh_token = await create_tokens(db, user)
+        _set_refresh_cookie(response, refresh_token)
+        
+        from fastapi.responses import RedirectResponse
+        frontend_url = f"{settings.FRONTEND_URL}{origin}?auth=success&uid={user.id}"
+        return RedirectResponse(url=frontend_url)
+        
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Google authentication failed")
