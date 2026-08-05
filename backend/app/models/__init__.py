@@ -1,4 +1,4 @@
-from .base import Base, TenantMixin, TimestampMixin
+from .base import Base, TenantMixin, TimestampMixin, GUID, JSONType
 from .identity import User, Organization, RefreshToken, PasswordReset, EmailVerification
 from .recruitment import Department, Job, PipelineStage, JobEmbedding
 from .candidate import Candidate, Resume, ResumeParsedData, CandidateEmbedding

@@ -2,6 +2,7 @@ p, hr_manager, organization, read
 p, hr_manager, organization, update
 p, hr_manager, users, read
 p, hr_manager, users, update
+p, hr_manager, departments, read
 p, hr_manager, departments, manage
 p, hr_manager, jobs, manage
 p, hr_manager, candidates, manage

@@ -1,10 +1,9 @@
 import uuid
 from sqlalchemy import Column, String, Boolean, Enum, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 import enum
 
-from .base import Base, TimestampMixin, TenantMixin
+from .base import Base, TimestampMixin, TenantMixin, GUID, JSONType
 
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"
@@ -15,18 +14,18 @@ class UserRole(str, enum.Enum):
 class Organization(Base, TimestampMixin):
     __tablename__ = "organizations"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     slug = Column(String, unique=True, index=True, nullable=False)
     plan = Column(String, default="free")
-    settings = Column(JSONB, default={})
+    settings = Column(JSONType(), default={})
     
     users = relationship("User", back_populates="organization")
 
 class User(Base, TimestampMixin, TenantMixin):
     __tablename__ = "users"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     email = Column(String, index=True, nullable=False)
     hashed_password = Column(String, nullable=True) # nullable for oauth
     role = Column(Enum(UserRole), default=UserRole.HR_MANAGER, nullable=False)
@@ -41,8 +40,8 @@ class User(Base, TimestampMixin, TenantMixin):
 class RefreshToken(Base, TimestampMixin):
     __tablename__ = "refresh_tokens"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), index=True, nullable=False)
     token_hash = Column(String, nullable=False, unique=True, index=True)
     expires_at = Column(String, nullable=False)
     revoked_at = Column(String, nullable=True)
@@ -50,8 +49,8 @@ class RefreshToken(Base, TimestampMixin):
 class PasswordReset(Base, TimestampMixin):
     __tablename__ = "password_resets"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), index=True, nullable=False)
     token_hash = Column(String, nullable=False, unique=True)
     expires_at = Column(String, nullable=False)
     used_at = Column(String, nullable=True)
@@ -59,8 +58,8 @@ class PasswordReset(Base, TimestampMixin):
 class EmailVerification(Base, TimestampMixin):
     __tablename__ = "email_verifications"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    user_id = Column(GUID(), ForeignKey("users.id"), index=True, nullable=False)
     token_hash = Column(String, nullable=False, unique=True)
     expires_at = Column(String, nullable=False)
     used_at = Column(String, nullable=True)

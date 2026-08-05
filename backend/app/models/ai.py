@@ -1,19 +1,18 @@
 import uuid
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, Boolean
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
-from .base import Base, TimestampMixin, TenantMixin
+from .base import Base, TimestampMixin, TenantMixin, GUID, JSONType
 
 class AiMatchResult(Base, TimestampMixin):
     __tablename__ = "ai_match_results"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    application_id = Column(UUID(as_uuid=True), ForeignKey("applications.id"), index=True, nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    application_id = Column(GUID(), ForeignKey("applications.id"), index=True, nullable=False)
     match_pct = Column(Float, nullable=False)
-    missing_skills = Column(JSONB, default=[])
-    strengths = Column(JSONB, default=[])
-    weaknesses = Column(JSONB, default=[])
+    missing_skills = Column(JSONType(), default=[])
+    strengths = Column(JSONType(), default=[])
+    weaknesses = Column(JSONType(), default=[])
     recommendation = Column(String, nullable=False)
     prompt_version = Column(String, nullable=False)
     model_used = Column(String, nullable=False)
@@ -22,7 +21,7 @@ class AiMatchResult(Base, TimestampMixin):
 class AiUsageLog(Base, TimestampMixin, TenantMixin):
     __tablename__ = "ai_usage_logs"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     feature = Column(String, nullable=False) # matching/copilot/feedback/jd_generation
     input_tokens = Column(Integer, nullable=False)
     output_tokens = Column(Integer, nullable=False)
