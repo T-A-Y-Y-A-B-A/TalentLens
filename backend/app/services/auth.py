@@ -55,8 +55,9 @@ async def register_user(db: AsyncSession, email: str, password: str, org_name: s
     
     return user
 
-async def register_oauth_user(db: AsyncSession, email: str, first_name: str, oauth_provider: str, oauth_id: str) -> User:
-    org_name = f"{first_name}'s Organization"
+async def register_oauth_user(db: AsyncSession, email: str, first_name: str, oauth_provider: str, oauth_id: str, org_name: Optional[str] = None) -> User:
+    if not org_name:
+        org_name = f"{first_name}'s Organization"
     org = await create_organization(db, org_name, slug_suffix=secrets.token_hex(4))
     
     user = User(

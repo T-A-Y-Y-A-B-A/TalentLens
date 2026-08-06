@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/components/providers/AuthProvider";
-import { Loader2, LayoutDashboard, Users, Briefcase, Settings, LogOut, Menu, Sparkles, BarChart3, Calendar } from "lucide-react";
+import { Loader2, LayoutDashboard, Users, Briefcase, Settings, LogOut, Menu, Sparkles, BarChart3, Calendar, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -92,6 +92,17 @@ export default function HRDashboardLayout({
                 </Link>
               );
             })}
+            {user?.is_platform_admin && (
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <Link
+                  href="/admin"
+                  className="flex items-center rounded-md px-2 py-2 text-sm font-bold bg-zinc-900 text-white hover:bg-zinc-800"
+                >
+                  <ShieldAlert className="mr-3 h-5 w-5 flex-shrink-0 text-zinc-300" />
+                  Admin Console
+                </Link>
+              </div>
+            )}
           </nav>
 
           <div className="border-t border-gray-200 p-4">

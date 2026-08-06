@@ -16,11 +16,13 @@ logger = structlog.get_logger()
 
 T = TypeVar('T', bound=BaseModel)
 
+from app.core.config import settings
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def call_llm(
     prompt: str,
     response_model: Type[T],
-    model: str = "groq/llama3-70b-8192",
+    model: str = settings.GROQ_MODEL_MATCH,
     system_prompt: str = "You are a helpful AI assistant.",
     temperature: float = 0.0,
     **kwargs: Any

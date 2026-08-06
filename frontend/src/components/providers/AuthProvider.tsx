@@ -48,7 +48,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    fetchUser();
+    // Check for OAuth callback token in URL
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get("token");
+    if (token) {
+      // Clear token from URL to avoid leaking it
+      url.searchParams.delete("token");
+      url.searchParams.delete("auth");
+      url.searchParams.delete("uid");
+      window.history.replaceState({}, document.title, url.toString());
+      login(token);
+    } else {
+      fetchUser();
+    }
   }, []);
 
   const login = (token: string) => {

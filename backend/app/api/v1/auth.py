@@ -107,11 +107,25 @@ async def password_reset_conf(request: Request, payload: PasswordResetConfirm, d
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+@router.get("/oauth/google/login")
+async def google_login(request: Request):
+    import json
+    import base64
+    
+    # Store the origin so we know where to redirect after login
+    origin = request.query_params.get("from", "/dashboard")
+    state_data = json.dumps({"from": origin})
+    state = base64.urlsafe_b64encode(state_data.encode()).decode().rstrip('=')
+    
+    redirect_uri = settings.GOOGLE_REDIRECT_URI
+    return await oauth.google.authorize_redirect(request, redirect_uri, state=state)
+
 @router.get("/oauth/google/callback")
 async def google_auth(request: Request, response: Response, code: str, state: str, db: AsyncSession = Depends(get_db)):
     import json
     import base64
     import httpx
+    from app.models.candidate import Candidate
     
     # decode state to find origin
     origin = "/dashboard"
@@ -149,21 +163,96 @@ async def google_auth(request: Request, response: Response, code: str, state: st
         first_name = user_info.get('given_name', 'User')
         oauth_id = user_info.get('sub')
         
+        # Security: Prevent Candidates from logging into the HR portal
+        candidate_result = await db.execute(select(Candidate).where(Candidate.email == email))
+        if candidate_result.scalars().first():
+            raise HTTPException(status_code=403, detail="Email is registered as a candidate. You cannot access the HR portal with this account.")
+        
         # Check if user exists
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalars().first()
         
         if not user:
-            # Register new user
-            user = await register_oauth_user(db, email, first_name, "google", oauth_id)
+            # Generate a signed registration token instead of passing raw parameters
+            from jose import jwt
+            from datetime import datetime, timedelta
+            from app.core.config import settings
+            
+            payload = {
+                "sub": email,
+                "name": first_name,
+                "oauth_id": oauth_id,
+                "purpose": "oauth_registration",
+                "exp": datetime.utcnow() + timedelta(minutes=10)
+            }
+            reg_token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+            
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=f"{settings.FRONTEND_URL}/register?reg_token={reg_token}")
         
         # Create tokens
         access_token, refresh_token = await create_tokens(db, user)
         _set_refresh_cookie(response, refresh_token)
         
         from fastapi.responses import RedirectResponse
-        frontend_url = f"{settings.FRONTEND_URL}{origin}?auth=success&uid={user.id}"
+        frontend_url = f"{settings.FRONTEND_URL}{origin}?auth=success&token={access_token}&uid={user.id}"
         return RedirectResponse(url=frontend_url)
         
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=401, detail="Google authentication failed")
+
+from app.schemas.auth import OauthRegisterRequest, OauthPreviewResponse
+
+@router.get("/register/oauth/preview", response_model=OauthPreviewResponse)
+async def preview_oauth_registration(reg_token: str):
+    from jose import jwt, JWTError, ExpiredSignatureError
+    from app.core.config import settings
+    try:
+        payload = jwt.decode(reg_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("purpose") != "oauth_registration":
+            raise HTTPException(status_code=400, detail="Invalid token purpose")
+        return {"email": payload.get("sub"), "name": payload.get("name")}
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Registration token expired")
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid registration token")
+
+@router.post("/register/oauth", response_model=Token)
+async def register_oauth_endpoint(payload: OauthRegisterRequest, response: Response, db: AsyncSession = Depends(get_db)):
+    from jose import jwt, JWTError, ExpiredSignatureError
+    from app.core.config import settings
+    try:
+        decoded = jwt.decode(payload.reg_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        if decoded.get("purpose") != "oauth_registration":
+            raise HTTPException(status_code=400, detail="Invalid token purpose")
+            
+        email = decoded.get("sub")
+        first_name = decoded.get("name")
+        oauth_id = decoded.get("oauth_id")
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Registration token expired")
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid registration token")
+        
+    # Security: Ensure they aren't a Candidate (double check)
+    from app.models.candidate import Candidate
+    candidate_result = await db.execute(select(Candidate).where(Candidate.email == email))
+    if candidate_result.scalars().first():
+        raise HTTPException(status_code=403, detail="Email is registered as a candidate.")
+        
+    # Check if user already exists
+    existing = await db.execute(select(User).where(User.email == email))
+    if existing.scalars().first():
+        raise HTTPException(status_code=400, detail="User already registered")
+        
+    # Register the user using org_name
+    user = await register_oauth_user(db, email, first_name, "google", oauth_id, payload.org_name)
+    
+    # Issue real JWTs
+    access_token, refresh_token = await create_tokens(db, user)
+    _set_refresh_cookie(response, refresh_token)
+    return {"access_token": access_token, "token_type": "bearer"}

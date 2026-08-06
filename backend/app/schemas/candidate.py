@@ -80,6 +80,10 @@ class Education(BaseModel):
     institution: str
     graduation_year: Optional[str] = None
 
+class Project(BaseModel):
+    name: str
+    description: Optional[str] = None
+
 class ResumeExtraction(BaseModel):
     name: str
     email: Optional[str] = None
@@ -88,4 +92,4 @@ class ResumeExtraction(BaseModel):
     experience: List[Experience] = Field(default_factory=list)
     education: List[Education] = Field(default_factory=list)
     certifications: List[str] = Field(default_factory=list)
-    projects: List[str] = Field(default_factory=list)
+    projects: List[Project] = Field(default_factory=list)

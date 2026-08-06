@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
@@ -20,6 +20,13 @@ from app.schemas.candidate import CandidateRead, ResumeRead
 from app.schemas.application import ApplicationRead, ApplicationWithDetailsRead
 from app.schemas.recruitment import JobPublicRead
 from datetime import datetime, timezone
+
+class OrganizationPublicRead(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    plan: Optional[str] = None
+    model_config = {"from_attributes": True}
 
 router = APIRouter(prefix="/candidate-portal", tags=["candidate-portal"])
 
@@ -273,15 +280,176 @@ async def get_candidate_applications(
         
     return applications
 
-@router.get("/jobs", response_model=List[JobPublicRead])
-async def get_public_jobs(db: AsyncSession = Depends(get_db)):
-    # Global job board: returns all active jobs, joined with department
-    from app.models.recruitment import JobStatus
-    result = await db.execute(
-        select(Job)
-        .options(joinedload(Job.department))
-        .where(Job.status == JobStatus.PUBLISHED)
-        .where(Job.deleted_at.is_(None))
-        .order_by(Job.created_at.desc())
-    )
+@router.get("/organizations", response_model=List[OrganizationPublicRead])
+async def get_candidate_organizations(
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    result = await db.execute(select(Organization))
     return result.scalars().all()
+
+@router.get("/jobs")
+async def get_candidate_jobs(
+    org_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    from app.models.recruitment import JobStatus, Job
+    from app.models.ai import AIMatchResult
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy import func
+    
+    # Verify org exists
+    org_res = await db.execute(select(Organization).where(Organization.id == org_id))
+    if not org_res.scalars().first():
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    query = (
+        select(Job, AIMatchResult)
+        .options(joinedload(Job.department))
+        .outerjoin(AIMatchResult, (AIMatchResult.job_id == Job.id) & (AIMatchResult.candidate_id == current_candidate.id))
+        .where(Job.org_id == org_id)
+        .where(Job.status == JobStatus.OPEN)
+        .where(Job.deleted_at.is_(None))
+        .order_by(func.coalesce(AIMatchResult.match_pct, -1).desc(), Job.created_at.desc())
+    )
+    
+    result = await db.execute(query)
+    
+    response = []
+    for job, ai_match in result.all():
+        job_dict = {
+            "id": job.id,
+            "title": job.title,
+            "description": job.description,
+            "department": job.department,
+            "created_at": job.created_at,
+            "org_id": job.org_id,
+        }
+        if ai_match:
+            job_dict["match_pct"] = ai_match.match_pct
+            job_dict["ats_score"] = ai_match.ats_score
+            job_dict["strengths"] = ai_match.strengths
+            job_dict["weaknesses"] = ai_match.weaknesses
+            job_dict["missing_skills"] = ai_match.missing_skills
+        response.append(job_dict)
+        
+    return response
+
+class AnalyzeRequest(BaseModel):
+    org_id: UUID
+
+@router.post("/me/analyze")
+async def trigger_analysis(
+    payload: AnalyzeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    # Verify org exists
+    org_res = await db.execute(select(Organization).where(Organization.id == payload.org_id))
+    if not org_res.scalars().first():
+        raise HTTPException(status_code=404, detail="Organization not found")
+        
+    from app.workers.tasks.matching_candidate import match_jobs_for_candidate
+    task = match_jobs_for_candidate.delay(str(current_candidate.id), [str(payload.org_id)])
+    
+    return {"task_id": task.id}
+
+@router.get("/me/analyze/status/{task_id}")
+async def get_analysis_status(
+    task_id: str,
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    from app.workers.celery_app import celery_app
+    res = celery_app.AsyncResult(task_id)
+    return {"status": res.status, "ready": res.ready()}
+@router.get("/oauth/google/login")
+async def google_login(request: Request):
+    from app.core.config import settings
+    from app.api.v1.auth import oauth
+    import json
+    import base64
+    
+    origin = request.query_params.get("from", "/portal/dashboard")
+    state_data = json.dumps({"from": origin})
+    state = base64.urlsafe_b64encode(state_data.encode()).decode().rstrip('=')
+    
+    redirect_uri = settings.GOOGLE_CANDIDATE_REDIRECT_URI
+    return await oauth.google.authorize_redirect(request, redirect_uri, state=state)
+
+@router.get("/oauth/google/callback")
+async def google_auth(request: Request, code: str, state: str, db: AsyncSession = Depends(get_db)):
+    from app.core.config import settings
+    from app.models.identity import User
+    from app.core.security import create_access_token
+    import json
+    import base64
+    import httpx
+    
+    origin = "/portal/dashboard"
+    try:
+        padded_state = state + '=' * (-len(state) % 4)
+        state_data = json.loads(base64.urlsafe_b64decode(padded_state))
+        origin = state_data.get("from", "/portal/dashboard")
+    except Exception:
+        pass
+
+    try:
+        async with httpx.AsyncClient() as client:
+            token_resp = await client.post("https://oauth2.googleapis.com/token", data={
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": settings.GOOGLE_CANDIDATE_REDIRECT_URI
+            })
+            token_resp.raise_for_status()
+            token_data = token_resp.json()
+            
+            userinfo_resp = await client.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={
+                "Authorization": f"Bearer {token_data['access_token']}"
+            })
+            userinfo_resp.raise_for_status()
+            user_info = userinfo_resp.json()
+            
+        if not user_info or 'email' not in user_info:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+            
+        email = user_info['email']
+        first_name = user_info.get('given_name', 'Candidate')
+        last_name = user_info.get('family_name', '')
+        full_name = f"{first_name} {last_name}".strip()
+        oauth_id = user_info.get('sub')
+        
+        # Security: Prevent HR users from logging in via Candidate portal
+        staff_result = await db.execute(select(User).where(User.email == email))
+        if staff_result.scalars().first():
+            raise HTTPException(status_code=403, detail="Email is registered as HR. You cannot access the Candidate portal with this account.")
+            
+        result = await db.execute(select(Candidate).where(Candidate.email == email))
+        candidate = result.scalars().first()
+        
+        if not candidate:
+            candidate = Candidate(
+                name=full_name,
+                email=email,
+                source="google_oauth",
+                profile={"google_id": oauth_id},
+                hashed_password=None
+            )
+            db.add(candidate)
+            await db.commit()
+            await db.refresh(candidate)
+            
+        access_token = create_access_token(subject=candidate.id, additional_claims={"role": "candidate"})
+        
+        from fastapi.responses import RedirectResponse
+        frontend_url = f"{settings.FRONTEND_URL}{origin}?auth=success&token={access_token}&uid={candidate.id}"
+        return RedirectResponse(url=frontend_url)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=401, detail="Google authentication failed")

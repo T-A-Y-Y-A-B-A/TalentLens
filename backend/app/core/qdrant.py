@@ -15,7 +15,10 @@ async def init_qdrant():
             vectors_config={"dense": VectorParams(size=384, distance=Distance.COSINE)},
             sparse_vectors_config={"sparse": SparseVectorParams()}
         )
-    else:
-        # Check if it has sparse vectors config, if not, we can't easily modify the unnamed default vector,
-        # but in this scope we'll assume it was created correctly or we wipe it in testing.
-        pass
+        
+    if "jobs" not in collection_names:
+        await qdrant_client.create_collection(
+            collection_name="jobs",
+            vectors_config={"dense": VectorParams(size=384, distance=Distance.COSINE)},
+            sparse_vectors_config={"sparse": SparseVectorParams()}
+        )

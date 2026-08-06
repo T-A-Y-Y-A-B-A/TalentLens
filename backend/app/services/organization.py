@@ -35,11 +35,17 @@ def _create_audit_log(
     db.add(audit)
 
 async def create_organization(db: AsyncSession, name: str, slug_suffix: Optional[str] = None) -> Organization:
+    from sqlalchemy.exc import IntegrityError
+    
     base_slug = name.lower().replace(" ", "-")
     slug = f"{base_slug}-{slug_suffix}" if slug_suffix else base_slug
     org = Organization(name=name, slug=slug)
     db.add(org)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Organization name is already taken. Please choose another one.")
     return org
 
 async def get_organization(db: AsyncSession, org_id: uuid.UUID, current_user: User) -> Organization:

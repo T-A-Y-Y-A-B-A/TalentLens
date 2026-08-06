@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str
     GOOGLE_CLIENT_SECRET: str
     GOOGLE_REDIRECT_URI: str
+    GOOGLE_CANDIDATE_REDIRECT_URI: str
     
     # CORS
     FRONTEND_URL: str = "http://localhost:3000"
@@ -45,6 +46,10 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str
     MINIO_SECRET_KEY: str
     MINIO_SECURE: bool = False
+    
+    # LLM Models
+    GROQ_MODEL_EXTRACT: str = "groq/openai/gpt-oss-20b"
+    GROQ_MODEL_MATCH: str = "groq/openai/gpt-oss-120b"
     
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 

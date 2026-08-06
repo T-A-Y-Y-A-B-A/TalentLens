@@ -5,7 +5,9 @@ import uuid
 from datetime import datetime, timezone
 
 from app.workers.celery_app import celery_app
-from app.core.database import AsyncSessionLocal
+import asyncio
+from app.core.database import AsyncSessionLocal, engine
+from app.core.config import settings
 from app.models.candidate import Resume, ParseStatus, ResumeParsedData, CandidateEmbedding
 from app.ai.llm import call_llm
 from app.ai.prompts.resume_extraction import RESUME_EXTRACTION_PROMPT
@@ -75,7 +77,7 @@ async def async_parse_resume(resume_id: str):
             structured_data = await call_llm(
                 prompt=prompt,
                 response_model=ResumeExtraction,
-                model="claude-3-5-sonnet-20240620"
+                model=settings.GROQ_MODEL_EXTRACT
             )
             
             # 3. Save structured data to Postgres
@@ -85,7 +87,7 @@ async def async_parse_resume(resume_id: str):
                 experience=[e.model_dump() for e in structured_data.experience],
                 education=[e.model_dump() for e in structured_data.education],
                 certifications=structured_data.certifications,
-                projects=structured_data.projects
+                projects=[p.model_dump() for p in structured_data.projects]
             )
             db.add(parsed_data)
             
@@ -96,8 +98,21 @@ async def async_parse_resume(resume_id: str):
             for exp in structured_data.experience:
                 text_to_embed += f"Experience: {exp.title} at {exp.company}\n"
             
-            # Embed the text
-            vector = embed_text(text_to_embed)
+            # Embed the text (dense)
+            loop = asyncio.get_event_loop()
+            dense_vector = await loop.run_in_executor(None, embed_text, text_to_embed)
+            
+            # Generate Sparse Vector
+            def embed_sparse():
+                from app.services.matching import get_sparse_model
+                model = get_sparse_model()
+                return list(model.embed([text_to_embed]))[0]
+                
+            sparse_dict = await loop.run_in_executor(None, embed_sparse)
+            sparse_vector = {
+                "indices": sparse_dict.indices.tolist(),
+                "values": sparse_dict.values.tolist()
+            }
             
             # Save embedding metadata
             point_id = str(uuid.uuid4())
@@ -120,7 +135,10 @@ async def async_parse_resume(resume_id: str):
                 points=[
                     PointStruct(
                         id=point_id,
-                        vector=vector,
+                        vector={
+                            "dense": dense_vector,
+                            "sparse": sparse_vector
+                        },
                         payload={
                             "candidate_id": str(candidate.id),
                             "skills": structured_data.skills
@@ -138,10 +156,19 @@ async def async_parse_resume(resume_id: str):
             logger.error("parse_resume_failed", resume_id=resume_id, error=str(e))
             resume.parse_status = ParseStatus.FAILED
             await db.commit()
+            raise
 
 @celery_app.task(name="tasks.parse_resume")
 def parse_resume(resume_id: str):
     """
     Celery task entrypoint. Runs the async parse workflow in a new event loop.
     """
-    asyncio.run(async_parse_resume(resume_id))
+    from app.core.database import engine
+    
+    async def wrapper():
+        try:
+            await async_parse_resume(resume_id)
+        finally:
+            await engine.dispose()
+            
+    asyncio.run(wrapper())

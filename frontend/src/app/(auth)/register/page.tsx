@@ -41,17 +41,9 @@ function RegisterContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [oauthSuccess, setOauthSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    const authStatus = searchParams.get('auth');
-    if (authStatus === 'success') {
-      const uid = searchParams.get('uid');
-      // In a real app, you might fetch user info here or update global state
-      setOauthSuccess(`Successfully authenticated with Google!`);
-      // Optional: redirect to dashboard after a delay
-      setTimeout(() => router.push('/dashboard'), 2000);
-    }
-  }, [searchParams, router]);
+  
+  const [regToken, setRegToken] = useState<string | null>(null);
+  const [isOauthRegistration, setIsOauthRegistration] = useState(false);
 
   const {
     register,
@@ -71,36 +63,90 @@ function RegisterContent() {
     },
   });
 
+  useEffect(() => {
+    const authStatus = searchParams.get('auth');
+    if (authStatus === 'success') {
+      const uid = searchParams.get('uid');
+      setOauthSuccess(`Successfully authenticated with Google!`);
+      setTimeout(() => router.push('/dashboard'), 2000);
+      return;
+    }
+
+    const token = searchParams.get('reg_token');
+    if (token) {
+      setRegToken(token);
+      setIsOauthRegistration(true);
+      // Fetch preview
+      apiClient.GET("/api/v1/auth/register/oauth/preview", {
+        params: {
+          query: { reg_token: token }
+        }
+      }).then(({ data, error }) => {
+        if (data) {
+          setValue('email', data.email);
+          setValue('fullName', data.name);
+          // Set dummy passwords to satisfy zod
+          setValue('password', 'OauthDummypw123!');
+          setValue('confirmPassword', 'OauthDummypw123!');
+        }
+        if (error) {
+          setApiError("Registration session expired or invalid. Please sign in with Google again.");
+          setIsOauthRegistration(false);
+        }
+      });
+    }
+  }, [searchParams, router, setValue]);
+
   const agreeTerms = watch('agreeTerms');
 
   const onSubmit = async (data: RegisterFormValues) => {
     setApiError(null);
     try {
-      const { data: resData, error, response } = await apiClient.POST('/api/v1/auth/register', {
-        body: {
-          email: data.email,
-          org_name: data.organizationName,
-          password: data.password,
-        }
-      });
-
-      if (error) {
-        const errorData = error as any;
-        if (errorData && errorData.detail) {
-          if (typeof errorData.detail === 'string') {
-             setApiError(errorData.detail);
-          } else if (Array.isArray(errorData.detail)) {
-             setApiError(errorData.detail[0]?.msg || 'Validation error from server');
-          } else {
-             setApiError('An error occurred during registration.');
+      if (isOauthRegistration && regToken) {
+        const { data: resData, error } = await apiClient.POST('/api/v1/auth/register/oauth', {
+          body: {
+            reg_token: regToken,
+            org_name: data.organizationName
           }
-        } else {
-          setApiError('Registration failed. Please try again.');
-        }
-        return;
-      }
+        });
 
-      router.push('/verify-email-sent');
+        if (error) {
+          setApiError((error as any).detail || 'OAuth Registration failed.');
+          return;
+        }
+
+        // Auto login
+        if (resData?.access_token) {
+          localStorage.setItem("access_token", resData.access_token);
+          window.location.href = "/dashboard";
+        }
+      } else {
+        const { data: resData, error } = await apiClient.POST('/api/v1/auth/register', {
+          body: {
+            email: data.email,
+            org_name: data.organizationName,
+            password: data.password,
+          }
+        });
+
+        if (error) {
+          const errorData = error as any;
+          if (errorData && errorData.detail) {
+            if (typeof errorData.detail === 'string') {
+               setApiError(errorData.detail);
+            } else if (Array.isArray(errorData.detail)) {
+               setApiError(errorData.detail[0]?.msg || 'Validation error from server');
+            } else {
+               setApiError('An error occurred during registration.');
+            }
+          } else {
+            setApiError('Registration failed. Please try again.');
+          }
+          return;
+        }
+
+        router.push('/verify-email-sent');
+      }
     } catch (err) {
       setApiError('Failed to connect to the server. Please try again.');
     }
@@ -110,7 +156,9 @@ function RegisterContent() {
     <div className="w-full">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Create your TalentLens account</h1>
-        <p className="text-zinc-500 mt-2">Start hiring smarter in minutes.</p>
+        <p className="text-zinc-500 mt-2">
+          {isOauthRegistration ? "Complete your organization profile to finish signing up with Google." : "Start hiring smarter in minutes."}
+        </p>
       </div>
 
       {apiError && (
@@ -151,7 +199,7 @@ function RegisterContent() {
             id="email"
             type="email"
             placeholder="you@company.com"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isOauthRegistration}
             className={errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}
             {...register('email')}
           />
@@ -172,61 +220,65 @@ function RegisterContent() {
           {errors.organizationName && <p className="text-sm text-red-500 mt-1">{errors.organizationName.message}</p>}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password" className={errors.password ? "text-red-500" : ""}>
-            Password
-          </Label>
-          <div className="relative">
-            <Input
-              id="password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              disabled={isSubmitting}
-              className={`pr-10 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-              {...register('password')}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              disabled={isSubmitting}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 focus:outline-none focus:text-zinc-600"
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
-            </button>
-          </div>
-          {errors.password ? (
-            <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
-          ) : (
-             <p className="text-xs text-zinc-500 mt-1">Must be at least 8 characters and contain at least 1 number.</p>
-          )}
-        </div>
+        {!isOauthRegistration && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="password" className={errors.password ? "text-red-500" : ""}>
+                Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  disabled={isSubmitting}
+                  className={`pr-10 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  {...register('password')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={isSubmitting}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 focus:outline-none focus:text-zinc-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                </button>
+              </div>
+              {errors.password ? (
+                <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
+              ) : (
+                 <p className="text-xs text-zinc-500 mt-1">Must be at least 8 characters and contain at least 1 number.</p>
+              )}
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="confirmPassword" className={errors.confirmPassword ? "text-red-500" : ""}>
-            Confirm Password
-          </Label>
-          <div className="relative">
-            <Input
-              id="confirmPassword"
-              type={showConfirmPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              disabled={isSubmitting}
-              className={`pr-10 ${errors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-              {...register('confirmPassword')}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              disabled={isSubmitting}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 focus:outline-none focus:text-zinc-600"
-            >
-              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              <span className="sr-only">{showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}</span>
-            </button>
-          </div>
-          {errors.confirmPassword && <p className="text-sm text-red-500 mt-1">{errors.confirmPassword.message}</p>}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className={errors.confirmPassword ? "text-red-500" : ""}>
+                Confirm Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  disabled={isSubmitting}
+                  className={`pr-10 ${errors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  {...register('confirmPassword')}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isSubmitting}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 focus:outline-none focus:text-zinc-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <span className="sr-only">{showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}</span>
+                </button>
+              </div>
+              {errors.confirmPassword && <p className="text-sm text-red-500 mt-1">{errors.confirmPassword.message}</p>}
+            </div>
+          </>
+        )}
 
         <div className="flex items-start space-x-2 pt-2">
           <Checkbox 
@@ -275,15 +327,7 @@ function RegisterContent() {
             className="w-full font-medium" 
             disabled={isSubmitting}
             onClick={() => {
-              const state = btoa(JSON.stringify({ from: "/register", ts: Date.now() }));
-              const params = new URLSearchParams({
-                client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
-                redirect_uri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || "",
-                response_type: "code",
-                scope: "openid email profile",
-                state,
-              });
-              window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+              window.location.href = `/api/v1/auth/oauth/google/login?from=/register`;
             }}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">

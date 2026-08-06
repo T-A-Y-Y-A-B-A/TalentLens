@@ -15,6 +15,7 @@ class AIMatchResult(Base):
     candidate_id = Column(UUID(as_uuid=True), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     
     match_pct = Column(Float, nullable=False)
+    ats_score = Column(Float, nullable=True)
     missing_skills = Column(JSONType, nullable=False, default=list)
     strengths = Column(JSONType, nullable=False, default=list)
     weaknesses = Column(JSONType, nullable=False, default=list)

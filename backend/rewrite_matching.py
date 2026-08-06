@@ -1,4 +1,12 @@
-import hashlib
+import os
+
+with open('app/services/matching.py', 'r') as f:
+    original = f.read()
+
+# We will completely replace matching.py with a new version that includes
+# generic pipeline abstraction and ATS scoring
+
+new_content = """import hashlib
 import json
 import asyncio
 from typing import List, Optional, Tuple, Dict, Any
@@ -32,7 +40,7 @@ cross_encoder = None
 def get_sparse_model():
     global sparse_model
     if sparse_model is None:
-        sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
+        sparse_model = SparseTextEmbedding()
     return sparse_model
 
 def get_cross_encoder():
@@ -96,7 +104,7 @@ async def match_single_candidate(
     
     ats_score = _calculate_ats_score(resume_data, job)
     
-    prompt = f"""
+    prompt = f\"\"\"
     You are an expert technical recruiter evaluating a candidate for a specific job.
     
     JOB REQUIREMENTS:
@@ -112,7 +120,7 @@ async def match_single_candidate(
     Education: {json.dumps([edu for edu in resume_data.education])}
     
     Analyze how well this candidate matches the job. Provide the match percentage (0-100), missing skills, strengths, weaknesses, a final recommendation, and 3 specific interview questions.
-    """
+    \"\"\"
     
     try:
         llm_response = await call_llm(
@@ -356,3 +364,7 @@ async def run_candidate_matching_pipeline(candidate_id: str, org_ids: List[str])
                 
         await redis_client.aclose()
         return results
+"""
+
+with open('app/services/matching.py', 'w') as f:
+    f.write(new_content)

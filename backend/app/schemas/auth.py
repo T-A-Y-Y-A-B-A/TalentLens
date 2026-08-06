@@ -15,6 +15,14 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class OauthRegisterRequest(BaseModel):
+    reg_token: str
+    org_name: str
+
+class OauthPreviewResponse(BaseModel):
+    email: str
+    name: str
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 
