@@ -1,0 +1,246 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { apiClient } from "@/lib/api/client";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2, UploadCloud, FileText, CheckCircle, GraduationCap, Briefcase, Award } from "lucide-react";
+import { toast } from "sonner";
+
+type ParsedData = {
+  skills: string[];
+  experience: any[];
+  education: any[];
+  certifications: any[];
+  projects: any[];
+};
+
+type CandidateProfile = {
+  name: string;
+  email: string;
+  parsed_data?: ParsedData | null;
+};
+
+export default function CandidateProfilePage() {
+  const [profile, setProfile] = useState<CandidateProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await apiClient.GET("/api/v1/candidate-portal/me", {});
+      if (data) {
+        setProfile(data as unknown as CandidateProfile);
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf" && !file.name.endsWith(".docx")) {
+      toast.error("Invalid File", {
+        description: "Please upload a .pdf or .docx file."
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Need to use native fetch for FormData since openapi-fetch sometimes struggles with it
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const token = localStorage.getItem("access_token");
+      const response = await fetch("/api/v1/candidate-portal/resume", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload");
+      }
+
+      toast.success("Resume Uploaded", {
+        description: "Your resume is now being analyzed by our AI. Check back in a few minutes.",
+      });
+      
+      // Refresh after a delay to potentially get parsed data
+      setTimeout(fetchProfile, 5000);
+    } catch (err: any) {
+      toast.error("Upload Error", {
+        description: "An error occurred while uploading your resume."
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">My Profile</h1>
+        <p className="text-zinc-500 mt-2">Manage your resume and AI-extracted profile.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Upload Column */}
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Info</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-zinc-900">{profile?.name}</p>
+                <p className="text-sm text-zinc-500">{profile?.email}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Resume Upload</CardTitle>
+              <CardDescription>Upload your latest resume to automatically update your profile.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div 
+                className="border-2 border-dashed border-zinc-200 rounded-xl p-8 text-center hover:bg-zinc-50 transition-colors cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {uploading ? (
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
+                    <p className="text-sm font-medium text-zinc-900">Uploading...</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
+                      <UploadCloud className="h-6 w-6 text-indigo-600" />
+                    </div>
+                    <p className="text-sm font-medium text-zinc-900 mb-1">Click to upload</p>
+                    <p className="text-xs text-zinc-500">PDF or DOCX up to 5MB</p>
+                  </div>
+                )}
+              </div>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept=".pdf,.docx" 
+                onChange={handleFileUpload} 
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Parsed Data Column */}
+        <div className="lg:col-span-2 space-y-6">
+          {!profile?.parsed_data ? (
+            <Card className="h-full min-h-[400px] flex items-center justify-center bg-zinc-50/50 border-dashed">
+              <div className="text-center p-8 max-w-sm">
+                <FileText className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-zinc-900">No Profile Data Yet</h3>
+                <p className="text-zinc-500 mt-2 text-sm">Upload your resume and our AI will automatically extract your skills and experience.</p>
+              </div>
+            </Card>
+          ) : (
+            <>
+              {/* Skills */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-indigo-600" />
+                    Top Skills
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.parsed_data.skills.map((skill, i) => (
+                      <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Experience */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="h-5 w-5 text-indigo-600" />
+                    Experience
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {profile.parsed_data.experience.map((exp, i) => (
+                    <div key={i} className="relative pl-6 border-l-2 border-zinc-100 last:border-0 last:pb-0 pb-6">
+                      <div className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-zinc-300 ring-4 ring-white" />
+                      <h4 className="text-sm font-bold text-zinc-900">{exp.title}</h4>
+                      <p className="text-sm font-medium text-indigo-600">{exp.company}</p>
+                      <p className="text-xs text-zinc-500 mt-1 mb-2">
+                        {exp.start_date || 'Unknown'} - {exp.end_date || 'Present'}
+                      </p>
+                      {exp.description && (
+                        <p className="text-sm text-zinc-600 line-clamp-3">{exp.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+              
+              {/* Education */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5 text-indigo-600" />
+                    Education
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {profile.parsed_data.education.map((edu, i) => (
+                    <div key={i} className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-sm font-bold text-zinc-900">{edu.degree}</h4>
+                        <p className="text-sm text-zinc-600">{edu.institution}</p>
+                      </div>
+                      <span className="text-xs font-medium bg-zinc-100 text-zinc-600 px-2 py-1 rounded">
+                        {edu.graduation_year || 'Unknown'}
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

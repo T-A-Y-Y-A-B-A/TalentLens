@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      if (pathname?.startsWith("/candidate")) {
+      if (pathname?.startsWith("/portal")) {
         const { data } = await apiClient.GET("/api/v1/candidate-portal/me");
         if (data) {
           setUser({ ...data, role: "candidate" } as any);
@@ -65,8 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       localStorage.removeItem("access_token");
       setUser(null);
-      if (pathname?.startsWith("/candidate")) {
-        router.push("/candidate/login");
+      if (pathname?.startsWith("/portal")) {
+        router.push("/portal/login");
       } else {
         router.push("/login");
       }

@@ -11,7 +11,7 @@ class ParseStatus(str, enum.Enum):
     DONE = "done"
     FAILED = "failed"
 
-class Candidate(Base, TimestampMixin, TenantMixin):
+class Candidate(Base, TimestampMixin):
     __tablename__ = "candidates"
     
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
@@ -20,6 +20,7 @@ class Candidate(Base, TimestampMixin, TenantMixin):
     name = Column(String, nullable=False)
     profile = Column(JSONType(), default={})
     source = Column(String, nullable=True) # referral/portal/manual
+    hashed_password = Column(String, nullable=True)  # For candidate self-serve portal auth
     
     resumes = relationship("Resume", back_populates="candidate")
     applications = relationship("Application", back_populates="candidate")

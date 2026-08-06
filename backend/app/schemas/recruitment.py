@@ -82,3 +82,11 @@ class JobRead(JobBase):
     pipeline_stages: List[PipelineStageRead] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+class JobPublicRead(JobBase):
+    id: UUID
+    org_id: UUID
+    created_at: datetime
+    department: Optional[DepartmentRead] = None
+    
+    model_config = ConfigDict(from_attributes=True)

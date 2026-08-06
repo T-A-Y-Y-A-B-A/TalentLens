@@ -30,9 +30,11 @@ class CandidateUpdate(BaseModel):
 
 class CandidateRead(CandidateBase):
     id: UUID
-    org_id: UUID
     created_at: datetime
     updated_at: datetime
+    
+    # Optional field that gets populated if the AI parser has finished
+    parsed_data: Optional['ResumeParsedDataRead'] = None
 
     model_config = ConfigDict(from_attributes=True)
 

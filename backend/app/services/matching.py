@@ -217,20 +217,10 @@ async def run_job_matching_pipeline(job_id: str):
                 limit=20
             )
             
-            filter_org = Filter(
-                must=[
-                    FieldCondition(
-                        key="org_id",
-                        match=MatchValue(value=str(job.org_id))
-                    )
-                ]
-            )
-            
             qdrant_res = await qdrant_client.query_points(
                 collection_name="candidates",
                 prefetch=[prefetch_dense, prefetch_sparse],
                 query=qdrant_client.models.FusionQuery(fusion=qdrant_client.models.Fusion.RRF),
-                query_filter=filter_org,
                 limit=10,
                 with_payload=True
             )

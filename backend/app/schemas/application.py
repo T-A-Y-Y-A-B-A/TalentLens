@@ -25,6 +25,11 @@ class ApplicationRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ApplicationWithDetailsRead(ApplicationRead):
+    # Eagerly loaded relations for the Candidate Portal
+    job_title: Optional[str] = None
+    stage_name: Optional[str] = None
+
 # ----------------- Stage Movement Schemas -----------------
 class ApplicationStageMove(BaseModel):
     to_stage_id: UUID

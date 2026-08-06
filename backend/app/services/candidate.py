@@ -21,7 +21,6 @@ async def create_candidate(db: AsyncSession, obj_in: CandidateCreate, current_us
     # Optional: check if candidate already exists in org? We'll allow duplicates for now unless unique by email per org
     
     db_obj = Candidate(
-        org_id=current_user.org_id,
         email=obj_in.email,
         name=obj_in.name,
         phone=obj_in.phone,
@@ -36,20 +35,23 @@ async def create_candidate(db: AsyncSession, obj_in: CandidateCreate, current_us
 async def get_candidates(db: AsyncSession, current_user: User) -> List[Candidate]:
     enforce_role(current_user.role.value, "candidates", "manage")
     
+    from app.models.application import Application
     result = await db.execute(
-        select(Candidate)
-        .where(Candidate.org_id == current_user.org_id)
-        # Note: no deleted_at on candidates in current schema, if there was, we'd filter it
+        select(Candidate).distinct()
+        .join(Application, Application.candidate_id == Candidate.id)
+        .where(Application.org_id == current_user.org_id)
     )
     return result.scalars().all()
 
 async def get_candidate(db: AsyncSession, candidate_id: UUID, current_user: User) -> Candidate:
     enforce_role(current_user.role.value, "candidates", "manage")
     
+    from app.models.application import Application
     result = await db.execute(
         select(Candidate)
+        .join(Application, Application.candidate_id == Candidate.id)
         .where(Candidate.id == candidate_id)
-        .where(Candidate.org_id == current_user.org_id)
+        .where(Application.org_id == current_user.org_id)
     )
     db_obj = result.scalars().first()
     if not db_obj:

@@ -32,30 +32,38 @@ async def async_parse_resume(resume_id: str):
         await db.commit()
         
         try:
-            # 1. Extract text from PDF
-            file_path = resume.file_url
-            if file_path.startswith("http"):
-                # Real implementation would download from MinIO here
-                pass
+            # Download from MinIO to memory buffer
+            import io
+            file_buffer = io.BytesIO()
             
-            # For local uploads, we just read the file
-            # In production this will use Docling.
+            if resume.file_url.startswith("s3://"):
+                from app.core.storage import get_s3_client
+                bucket, key = resume.file_url.replace("s3://", "").split("/", 1)
+                s3 = get_s3_client()
+                obj = s3.get_object(Bucket=bucket, Key=key)
+                file_buffer = io.BytesIO(obj['Body'].read())
+            else:
+                # Local fallback (for old testing data)
+                with open(resume.file_url, "rb") as f:
+                    file_buffer = io.BytesIO(f.read())
+            
             extracted_text = ""
             try:
                 from docling.document_converter import DocumentConverter
                 converter = DocumentConverter()
-                doc = converter.convert(file_path)
+                # Depending on docling version, this might not support BytesIO natively,
+                # but we try it. If it fails, we fall back to pypdf.
+                doc = converter.convert(file_buffer)
                 extracted_text = doc.document.export_to_markdown()
-            except ImportError:
-                # Fallback / Mock for tests running without docling
-                logger.warning("docling_not_available", fallback="pypdf")
+            except Exception as e:
+                logger.warning("docling_failed_falling_back_to_pypdf", error=str(e))
                 import pypdf
-                with open(file_path, "rb") as f:
-                    pdf = pypdf.PdfReader(f)
-                    for page in pdf.pages:
-                        text = page.extract_text()
-                        if text:
-                            extracted_text += text + "\n"
+                file_buffer.seek(0)
+                pdf = pypdf.PdfReader(file_buffer)
+                for page in pdf.pages:
+                    text = page.extract_text()
+                    if text:
+                        extracted_text += text + "\n"
                             
             if not extracted_text.strip():
                 raise Exception("Empty PDF or failed to extract text")
@@ -115,7 +123,6 @@ async def async_parse_resume(resume_id: str):
                         vector=vector,
                         payload={
                             "candidate_id": str(candidate.id),
-                            "org_id": str(candidate.org_id),
                             "skills": structured_data.skills
                         }
                     )

@@ -35,14 +35,19 @@ const authMiddleware: Middleware = {
   
   async onResponse({ request, response }) {
     if (response.status === 401) {
+      // If a login or register request fails, let the caller handle it to show validation errors
+      if (request.url.includes("/login") || request.url.includes("/register")) {
+        return response;
+      }
+
       // Avoid infinite loop if the refresh endpoint itself fails with 401
       if (request.url.includes("/auth/refresh")) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
           const path = window.location.pathname;
-          if (path !== "/login" && path !== "/" && !path.startsWith("/register") && !path.startsWith("/candidate/login") && !path.startsWith("/candidate/register")) {
-            if (path.startsWith("/candidate")) {
-              window.location.href = "/candidate/login";
+          if (path !== "/login" && path !== "/" && !path.startsWith("/register") && !path.startsWith("/portal/login") && !path.startsWith("/portal/register")) {
+            if (path.startsWith("/portal")) {
+              window.location.href = "/portal/login";
             } else {
               window.location.href = "/login";
             }
@@ -102,9 +107,9 @@ const authMiddleware: Middleware = {
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
           const path = window.location.pathname;
-          if (path !== "/login" && path !== "/" && !path.startsWith("/register") && !path.startsWith("/candidate/login") && !path.startsWith("/candidate/register")) {
-            if (path.startsWith("/candidate")) {
-              window.location.href = "/candidate/login";
+          if (path !== "/login" && path !== "/" && !path.startsWith("/register") && !path.startsWith("/portal/login") && !path.startsWith("/portal/register")) {
+            if (path.startsWith("/portal")) {
+              window.location.href = "/portal/login";
             } else {
               window.location.href = "/login";
             }

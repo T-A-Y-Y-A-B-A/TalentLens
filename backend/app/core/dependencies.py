@@ -39,3 +39,32 @@ def require_permission(resource: str, action: str):
         enforce_role(current_user.role.value, resource, action)
         return current_user
     return permission_checker
+
+async def get_current_candidate(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    from app.models.candidate import Candidate
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate candidate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    payload = await verify_access_token(token)
+    if payload is None:
+        raise credentials_exception
+        
+    candidate_id = payload.get("sub")
+    if candidate_id is None:
+        raise credentials_exception
+        
+    # verify role explicitly is candidate
+    if payload.get("role") != "candidate":
+        raise credentials_exception
+        
+    result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+    candidate = result.scalars().first()
+    if candidate is None:
+        raise credentials_exception
+        
+    return candidate

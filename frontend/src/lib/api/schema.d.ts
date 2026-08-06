@@ -657,6 +657,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidate-portal/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Public Jobs */
+        get: operations["get_public_jobs_api_v1_candidate_portal_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -739,6 +756,49 @@ export interface components {
             to_stage_id: string;
             /** Notes */
             notes?: string | null;
+        };
+        /** ApplicationWithDetailsRead */
+        ApplicationWithDetailsRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Current Stage Id */
+            current_stage_id?: string | null;
+            /** Status */
+            status: string;
+            /** Applied At */
+            applied_at: string;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Job Title */
+            job_title?: string | null;
+            /** Stage Name */
+            stage_name?: string | null;
         };
         /** Body_upload_candidate_resume_api_v1_candidate_portal_resume_post */
         Body_upload_candidate_resume_api_v1_candidate_portal_resume_post: {
@@ -829,6 +889,7 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            parsed_data?: components["schemas"]["ResumeParsedDataRead"] | null;
         };
         /** CandidateRegister */
         CandidateRegister: {
@@ -918,6 +979,35 @@ export interface components {
             status: components["schemas"]["JobStatus"];
             /** Department Id */
             department_id?: string | null;
+        };
+        /** JobPublicRead */
+        JobPublicRead: {
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Requirements */
+            requirements?: Record<string, never>;
+            /** @default draft */
+            status: components["schemas"]["JobStatus"];
+            /** Department Id */
+            department_id?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Org Id
+             * Format: uuid
+             */
+            org_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            department?: components["schemas"]["DepartmentRead"] | null;
         };
         /** JobRead */
         JobRead: {
@@ -1057,6 +1147,29 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** ResumeParsedDataRead */
+        ResumeParsedDataRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Resume Id
+             * Format: uuid
+             */
+            resume_id: string;
+            /** Skills */
+            skills: string[];
+            /** Experience */
+            experience: Record<string, never>[];
+            /** Education */
+            education: Record<string, never>[];
+            /** Certifications */
+            certifications: Record<string, never>[];
+            /** Projects */
+            projects: Record<string, never>[];
         };
         /** ResumeRead */
         ResumeRead: {
@@ -2567,7 +2680,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApplicationRead"][];
+                    "application/json": components["schemas"]["ApplicationWithDetailsRead"][];
+                };
+            };
+        };
+    };
+    get_public_jobs_api_v1_candidate_portal_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobPublicRead"][];
                 };
             };
         };
