@@ -35,6 +35,9 @@ class CandidateRead(CandidateBase):
     
     # Optional field that gets populated if the AI parser has finished
     parsed_data: Optional['ResumeParsedDataRead'] = None
+    
+    # The active resume for this candidate
+    resume: Optional['ResumeRead'] = None
 
     model_config = ConfigDict(from_attributes=True)
 

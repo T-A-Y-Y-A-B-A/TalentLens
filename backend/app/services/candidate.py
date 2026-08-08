@@ -1,7 +1,8 @@
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 from datetime import datetime
 
 from app.models.candidate import Candidate
@@ -38,6 +39,7 @@ async def get_candidates(db: AsyncSession, current_user: User) -> List[Candidate
     from app.models.application import Application
     result = await db.execute(
         select(Candidate).distinct()
+        .options(selectinload(Candidate.resumes))
         .join(Application, Application.candidate_id == Candidate.id)
         .where(Application.org_id == current_user.org_id)
     )
@@ -49,6 +51,7 @@ async def get_candidate(db: AsyncSession, candidate_id: UUID, current_user: User
     from app.models.application import Application
     result = await db.execute(
         select(Candidate)
+        .options(selectinload(Candidate.resumes))
         .join(Application, Application.candidate_id == Candidate.id)
         .where(Candidate.id == candidate_id)
         .where(Application.org_id == current_user.org_id)
@@ -95,6 +98,10 @@ async def upload_resume(db: AsyncSession, candidate_id: UUID, file: UploadFile, 
     # We will save relative to CWD.
     rel_path = os.path.join("uploads", safe_filename)
         
+    # Enforce one resume per candidate: delete old resumes
+    await db.execute(delete(Resume).where(Resume.candidate_id == candidate.id))
+    await db.commit()
+    
     db_obj = Resume(
         candidate_id=candidate.id,
         file_url=rel_path,

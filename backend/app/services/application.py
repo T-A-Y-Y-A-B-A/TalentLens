@@ -75,6 +75,9 @@ async def create_application(db: AsyncSession, obj_in: ApplicationCreate, curren
         db.add(history)
         await db.commit()
         
+    from app.services.candidate_visibility import sync_candidate_qdrant_orgs
+    await sync_candidate_qdrant_orgs(db, db_obj.candidate_id)
+        
     return db_obj
 
 async def get_applications(db: AsyncSession, current_user: User, job_id: Optional[UUID] = None, candidate_id: Optional[UUID] = None) -> List[Application]:

@@ -452,4 +452,4 @@ async def google_auth(request: Request, code: str, state: str, db: AsyncSession 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=401, detail="Google authentication failed")
+        raise HTTPException(status_code=401, detail=f"Google authentication failed: {str(e)}")

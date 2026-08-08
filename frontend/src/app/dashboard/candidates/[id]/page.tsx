@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, Phone, Calendar, Briefcase, FileText, ChevronLeft, Sparkles } from "lucide-react";
+import { Loader2, Mail, Phone, Calendar, Briefcase, FileText, ChevronLeft, Sparkles, CheckCircle, Upload } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 import { components } from "@/lib/api/schema";
 
 type CandidateRead = components["schemas"]["CandidateRead"];
 type ApplicationRead = components["schemas"]["ApplicationRead"];
+type JobRead = components["schemas"]["JobRead"];
 type MatchResult = {
   candidate_id: string;
   job_id: string;
@@ -32,6 +37,14 @@ export default function CandidateDetailPage() {
   const [matchResults, setMatchResults] = useState<Record<string, MatchResult>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Add to Job State
+  const [jobs, setJobs] = useState<JobRead[]>([]);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchCandidateData = async () => {
@@ -64,6 +77,12 @@ export default function CandidateDetailPage() {
         }
         setMatchResults(matches);
 
+        // Fetch jobs for the "Add to Job" dropdown
+        const { data: jobsData } = await apiClient.GET("/api/v1/jobs", {});
+        if (jobsData) {
+          setJobs(jobsData as any as JobRead[]);
+        }
+
       } catch (err: any) {
         setError(err.message || "Failed to load candidate details");
       } finally {
@@ -72,6 +91,69 @@ export default function CandidateDetailPage() {
     };
     if (candidateId) fetchCandidateData();
   }, [candidateId]);
+
+  const handleAddToJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedJobId) return;
+
+    setIsAdding(true);
+    try {
+      const { data, error: applyErr } = await apiClient.POST("/api/v1/applications", {
+        body: { candidate_id: candidateId, job_id: selectedJobId }
+      });
+
+      if (applyErr) {
+        const errorMessage = (applyErr as any).error?.message || (applyErr as any).detail || "Failed to add candidate to job";
+        throw new Error(errorMessage);
+      }
+
+      // Success, add to the local list
+      if (data) {
+        setApplications([...applications, data as any as ApplicationRead]);
+        setIsAddOpen(false);
+        setSelectedJobId("");
+      }
+    } catch (err: any) {
+      alert(err.message || "An error occurred");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`/api/v1/candidates/${candidateId}/resume`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload resume");
+      }
+
+      const newResume = await response.json();
+      setCandidate(prev => prev ? { ...prev, resume: newResume } : null);
+      
+      // Clear the input so it can be re-selected if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to upload resume");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -92,7 +174,7 @@ export default function CandidateDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center">
-        <Link href="/candidates" className="text-gray-500 hover:text-gray-700 mr-4">
+        <Link href="/dashboard/candidates" className="text-gray-500 hover:text-gray-700 mr-4">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <div className="flex flex-1 items-center justify-between">
@@ -102,10 +184,81 @@ export default function CandidateDetailPage() {
             </h1>
             <p className="text-sm text-gray-500 capitalize">{candidate.source?.replace("_", " ") || "Direct"} Candidate</p>
           </div>
-          <Button variant="outline">
-            <FileText className="mr-2 h-4 w-4" />
-            View Resume
-          </Button>
+          
+          <div className="flex items-center gap-3">
+            <input 
+              type="file" 
+              accept=".pdf" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleResumeUpload} 
+            />
+            {candidate.resume ? (
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center text-sm text-green-600 font-medium bg-green-50 px-2 py-1 rounded-md border border-green-200">
+                  <CheckCircle className="mr-1 h-4 w-4" />
+                  Resume Uploaded
+                </span>
+                <Button variant="outline" asChild>
+                  <a 
+                    href={`/api/v1/candidates/${candidateId}/resume/${candidate.resume.id}/download`} 
+                    target="_blank" 
+                    rel="noreferrer"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    View PDF
+                  </a>
+                </Button>
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                  Update Resume
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                Upload Resume
+              </Button>
+            )}
+
+            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-600 hover:bg-indigo-700">
+                  <Briefcase className="mr-2 h-4 w-4" />
+                  Add to Job
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Candidate to Job Pipeline</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAddToJob} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Select Job</Label>
+                    <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a job..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jobs.filter(j => j.status === "open").map(job => (
+                          <SelectItem key={job.id} value={job.id}>
+                            {job.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={!selectedJobId || isAdding} className="bg-indigo-600 hover:bg-indigo-700">
+                      {isAdding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Add Candidate
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </div>
 

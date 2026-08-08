@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Sparkles, Clock, ChevronRight, User } from "lucide-react";
+import { Search, Sparkles, Clock, ChevronRight, User, BrainCircuit, ArrowRight, Loader2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,57 +14,54 @@ type InterpretedFilter = {
   keywords: string[];
 };
 
-type MockCandidate = {
-  id: string;
-  name: string;
-  title: string;
-  matchScore: number;
-  skills: string[];
-};
-
 const MOCK_RECENT_QUERIES = [
   "Find Python developers with Kubernetes exp",
   "Senior React engineers in New York",
   "Product Managers with B2B SaaS background"
 ];
 
-const MOCK_INTERPRETED_FILTER: InterpretedFilter = {
-  skills: ["Python", "Kubernetes"],
-  min_experience: null,
-  certifications: [],
-  keywords: []
-};
-
-const MOCK_CANDIDATES: MockCandidate[] = [
-  { id: "cand-1", name: "Alice Johnson", title: "Backend Engineer", matchScore: 95, skills: ["Python", "Kubernetes", "Docker", "AWS"] },
-  { id: "cand-2", name: "Bob Smith", title: "DevOps Engineer", matchScore: 88, skills: ["Python", "Kubernetes", "Terraform", "GCP"] },
-  { id: "cand-3", name: "Charlie Davis", title: "Software Developer", matchScore: 82, skills: ["Python", "Go", "Kubernetes"] },
-];
-
 export default function CopilotPage() {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [interpretedFilter, setInterpretedFilter] = useState<InterpretedFilter | null>(null);
+  const [candidates, setCandidates] = useState<any[]>([]);
+
+  const performSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    setError(null);
+    try {
+      const { apiClient } = await import("@/lib/api/client");
+      const res = await apiClient.POST("/api/v1/copilot/query", {
+        body: { query: searchQuery } as any
+      });
+      
+      if (res.error) {
+        throw new Error(res.error.detail || "Search failed");
+      }
+      
+      setInterpretedFilter(res.data?.interpreted_as as any);
+      setCandidates(res.data?.results || []);
+      setHasSearched(true);
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+      setHasSearched(false);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
-    
-    setIsSearching(true);
-    // Simulate network delay
-    setTimeout(() => {
-      setIsSearching(false);
-      setHasSearched(true);
-    }, 800);
+    performSearch(query);
   };
 
   const handleRecentClick = (recentQuery: string) => {
     setQuery(recentQuery);
-    setIsSearching(true);
-    setTimeout(() => {
-      setIsSearching(false);
-      setHasSearched(true);
-    }, 800);
+    performSearch(recentQuery);
   };
 
   return (
@@ -79,24 +76,53 @@ export default function CopilotPage() {
         </p>
       </div>
 
-      <Card className="border-indigo-100 shadow-sm">
-        <CardContent className="pt-6">
-          <form onSubmit={handleSearch} className="flex gap-4 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input 
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. Find Python developers with Kubernetes exp..."
-                className="pl-10 h-12 text-lg border-gray-300 focus-visible:ring-indigo-500"
-              />
-            </div>
-            <Button type="submit" disabled={!query.trim() || isSearching} className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700">
-              {isSearching ? "Searching..." : "Search"}
-            </Button>
+      <div className="bg-white border border-zinc-200 shadow-xl rounded-2xl p-6 sm:p-8 space-y-6">
+        <div className="space-y-2">
+          <label className="text-sm font-bold text-zinc-700 flex items-center gap-2">
+            <BrainCircuit size={16} className="text-indigo-600" /> Ask the Copilot
+          </label>
+          <form onSubmit={handleSearch} className="relative">
+            <input 
+              type="text" 
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="e.g. Find Python developers with Kubernetes exp..."
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-xl py-3 px-4 text-zinc-900 font-medium focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+            <button type="submit" disabled={!query.trim() || isSearching} className="absolute right-2 top-1/2 -translate-y-1/2 bg-indigo-600 rounded-lg w-8 h-8 flex items-center justify-center text-white disabled:opacity-50 hover:bg-indigo-700 transition-colors">
+              {isSearching ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
+            </button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+
+        {hasSearched && interpretedFilter && (
+          <div className="pt-4 border-t border-zinc-100 space-y-3 animate-in fade-in duration-500">
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Interpreted Filters</p>
+            <div className="flex flex-wrap gap-2">
+              {interpretedFilter.skills?.map((s, i) => (
+                <div key={`skill-${i}`} className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2">
+                  Skill: {s} <X size={14} className="text-indigo-400 hover:text-indigo-700 cursor-pointer" />
+                </div>
+              ))}
+              {interpretedFilter.min_experience && (
+                <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2">
+                  Experience &ge; {interpretedFilter.min_experience} <X size={14} className="text-indigo-400 hover:text-indigo-700 cursor-pointer" />
+                </div>
+              )}
+              {interpretedFilter.certifications?.map((s, i) => (
+                <div key={`cert-${i}`} className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2">
+                  Cert: {s} <X size={14} className="text-indigo-400 hover:text-indigo-700 cursor-pointer" />
+                </div>
+              ))}
+              {interpretedFilter.keywords?.map((s, i) => (
+                <div key={`keyword-${i}`} className="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2">
+                  Keyword: {s} <X size={14} className="text-indigo-400 hover:text-indigo-700 cursor-pointer" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {!hasSearched && !isSearching && (
         <div className="pt-4">
@@ -119,89 +145,40 @@ export default function CopilotPage() {
         </div>
       )}
 
+      {error && (
+        <div className="text-red-500 text-sm">{error}</div>
+      )}
+
       {hasSearched && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <Card className="bg-slate-50 border-slate-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Interpreted As</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <span className="block text-xs text-slate-400 mb-1">Skills</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {MOCK_INTERPRETED_FILTER.skills.length > 0 ? (
-                      MOCK_INTERPRETED_FILTER.skills.map((s, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {s}
-                        </span>
-                      ))
-                    ) : <span className="text-sm text-slate-500">—</span>}
-                  </div>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400 mb-1">Min Experience</span>
-                  <span className="text-sm text-slate-700 font-medium">{MOCK_INTERPRETED_FILTER.min_experience || "—"}</span>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400 mb-1">Certifications</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {MOCK_INTERPRETED_FILTER.certifications.length > 0 ? (
-                      MOCK_INTERPRETED_FILTER.certifications.map((s, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                          {s}
-                        </span>
-                      ))
-                    ) : <span className="text-sm text-slate-500">—</span>}
-                  </div>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400 mb-1">Keywords</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {MOCK_INTERPRETED_FILTER.keywords.length > 0 ? (
-                      MOCK_INTERPRETED_FILTER.keywords.map((s, i) => (
-                        <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-800">
-                          {s}
-                        </span>
-                      ))
-                    ) : <span className="text-sm text-slate-500">—</span>}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{MOCK_CANDIDATES.length} matching candidates</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{candidates.length} matching candidates</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {MOCK_CANDIDATES.map((cand) => (
-                <Card key={cand.id} className="hover:border-indigo-300 transition-colors">
+              {candidates.map((cand) => (
+                <Card key={cand.candidate_id} className="hover:border-indigo-300 transition-colors">
                   <CardContent className="p-5">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
-                          {cand.name.charAt(0)}
+                          {cand.name ? cand.name.charAt(0) : "?"}
                         </div>
                         <div>
                           <h3 className="font-medium text-gray-900">{cand.name}</h3>
-                          <p className="text-xs text-gray-500">{cand.title}</p>
+                          <p className="text-xs text-gray-500">{cand.status}</p>
                         </div>
-                      </div>
-                      <div className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded-full flex items-center">
-                        {cand.matchScore}%
                       </div>
                     </div>
                     
                     <div className="mt-4 flex flex-wrap gap-1">
-                      {cand.skills.map((skill, i) => (
-                        <span key={i} className="inline-flex text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">
+                      {cand.skills?.slice(0, 5).map((skill: string, i: number) => (
+                        <span key={`skill-cand-${i}`} className="inline-flex text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">
                           {skill}
                         </span>
                       ))}
                     </div>
                     
                     <div className="mt-5 pt-4 border-t border-gray-100">
-                      <Link href={`/candidates/${cand.id}`} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center">
+                      <Link href={`/dashboard/candidates/${cand.candidate_id}`} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center">
                         View Profile
                         <ChevronRight className="h-4 w-4 ml-1" />
                       </Link>

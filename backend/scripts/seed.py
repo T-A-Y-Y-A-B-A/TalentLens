@@ -88,15 +88,45 @@ async def seed_data():
                 org_id=org.id
             )
             db.add(job)
+            await db.flush()
+
+            # Create pipeline stages for the job
+            from app.models.recruitment import PipelineStage
+            stages = ["Sourced", "Applied", "Interviewing", "Offered", "Hired"]
+            first_stage = None
+            for idx, stage_name in enumerate(stages):
+                stage = PipelineStage(
+                    job_id=job.id,
+                    name=stage_name,
+                    order_index=idx
+                )
+                db.add(stage)
+                if idx == 0:
+                    first_stage = stage
+            
+            await db.flush()
             
             # Create a Candidate
             candidate = Candidate(
                 email=f"candidate_{idx}@example.com",
                 name=f"Demo Candidate {idx}",
-                org_id=org.id,
                 source="portal"
             )
             db.add(candidate)
+            await db.flush()
+            
+            # Create an Application to link Candidate to Job/Org
+            from app.models.application import Application
+            from datetime import datetime, timezone
+            application = Application(
+                org_id=org.id,
+                candidate_id=candidate.id,
+                job_id=job.id,
+                current_stage_id=first_stage.id if first_stage else None,
+                status="active",
+                applied_at=datetime.now(timezone.utc).isoformat()
+            )
+            db.add(application)
             await db.flush()
             
             # Create a Resume
@@ -111,6 +141,7 @@ async def seed_data():
             credentials.append(f"Org: {org.name} | Recruiter: {rec_user.email} / {dev_password}")
             
         await db.commit()
+
         
         print("\n=== Seed Data Created Successfully ===")
         print("You can log in with the following credentials:")

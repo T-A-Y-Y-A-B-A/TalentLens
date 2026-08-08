@@ -22,8 +22,12 @@ class Candidate(Base, TimestampMixin):
     source = Column(String, nullable=True) # referral/portal/manual
     hashed_password = Column(String, nullable=True)  # For candidate self-serve portal auth
     
-    resumes = relationship("Resume", back_populates="candidate")
+    resumes = relationship("Resume", back_populates="candidate", order_by="desc(Resume.created_at)")
     applications = relationship("Application", back_populates="candidate")
+    
+    @property
+    def resume(self):
+        return self.resumes[0] if self.resumes else None
 
 class Resume(Base, TimestampMixin):
     __tablename__ = "resumes"

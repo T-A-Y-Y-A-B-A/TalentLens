@@ -162,7 +162,7 @@ export default function JobsPage() {
                   {jobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">
-                        <Link href={`/jobs/${job.id}`} className="text-indigo-600 hover:underline">
+                        <Link href={`/dashboard/jobs/${job.id}`} className="text-indigo-600 hover:underline">
                           {job.title}
                         </Link>
                       </TableCell>
@@ -176,7 +176,7 @@ export default function JobsPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/jobs/${job.id}`}>
+                        <Link href={`/dashboard/jobs/${job.id}`}>
                           <Button variant="ghost" size="sm">View Pipeline</Button>
                         </Link>
                       </TableCell>

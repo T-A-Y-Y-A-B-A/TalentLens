@@ -71,6 +71,9 @@ app.include_router(applications_router, prefix=settings.API_V1_STR)
 app.include_router(matching_router, prefix=settings.API_V1_STR)
 app.include_router(candidate_auth_router, prefix=settings.API_V1_STR)
 
+from app.api.v1.copilot import router as copilot_router
+app.include_router(copilot_router, prefix=settings.API_V1_STR)
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to TalentLens API"}

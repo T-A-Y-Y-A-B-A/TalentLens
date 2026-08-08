@@ -9,8 +9,10 @@ RUN apt-get update \
     && apt-get install -y gcc postgresql-client tesseract-ocr libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --default-timeout=1000 --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
 
 COPY . .
 

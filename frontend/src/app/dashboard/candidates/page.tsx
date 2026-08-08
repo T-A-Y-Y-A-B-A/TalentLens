@@ -193,7 +193,7 @@ export default function CandidatesPage() {
                   {candidates.map((candidate) => (
                     <TableRow key={candidate.id}>
                       <TableCell className="font-medium">
-                        <Link href={`/candidates/${candidate.id}`} className="text-indigo-600 hover:underline">
+                        <Link href={`/dashboard/candidates/${candidate.id}`} className="text-indigo-600 hover:underline">
                           {candidate.name}
                         </Link>
                       </TableCell>
@@ -203,7 +203,7 @@ export default function CandidatesPage() {
                       </TableCell>
                       <TableCell>{new Date(candidate.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/candidates/${candidate.id}`}>
+                        <Link href={`/dashboard/candidates/${candidate.id}`}>
                           <Button variant="ghost" size="sm">View Profile</Button>
                         </Link>
                       </TableCell>

@@ -152,6 +152,10 @@ async def async_parse_resume(resume_id: str):
             await db.commit()
             logger.info("parse_resume_success", resume_id=resume_id)
             
+            from app.services.candidate_visibility import sync_candidate_qdrant_orgs
+            await sync_candidate_qdrant_orgs(db, resume.candidate_id)
+
+            
         except Exception as e:
             logger.error("parse_resume_failed", resume_id=resume_id, error=str(e))
             resume.parse_status = ParseStatus.FAILED
