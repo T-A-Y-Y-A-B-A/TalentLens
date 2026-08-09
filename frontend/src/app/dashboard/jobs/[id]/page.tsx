@@ -10,6 +10,9 @@ import { DndContext, DragOverlay, closestCorners, KeyboardSensor, PointerSensor,
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { components } from "@/lib/api/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { JobMatches } from "@/components/JobMatches";
+import { Sparkles } from "lucide-react";
 
 type JobRead = components["schemas"]["JobRead"];
 type StageRead = components["schemas"]["PipelineStageRead"];
@@ -228,37 +231,51 @@ export default function JobPipelineBoard() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)]">
-      <div className="mb-6 flex items-center">
-        <Link href="/dashboard/jobs" className="text-gray-500 hover:text-gray-700 mr-4">
-          <ChevronLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-indigo-600" />
-            {job.title}
-          </h1>
-          <p className="text-sm text-gray-500 capitalize">{job.status} Role</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center">
+          <Link href="/dashboard/jobs" className="text-gray-500 hover:text-gray-700 mr-4">
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+              <Briefcase className="h-6 w-6 text-indigo-600" />
+              {job.title}
+            </h1>
+            <p className="text-sm text-gray-500 capitalize">{job.status} Role</p>
+          </div>
         </div>
       </div>
 
-      {/* Pipeline Kanban Board */}
-      <div className="flex-1 overflow-x-auto">
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 h-full pb-4">
-            {stages.map(stage => (
-              <PipelineColumn 
-                key={stage.id} 
-                stage={stage} 
-                applications={applications.filter(a => a.current_stage_id === stage.id)} 
-              />
-            ))}
-          </div>
+      <Tabs defaultValue="pipeline" className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="mb-6 self-start">
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="matches" className="flex items-center gap-2">
+             <Sparkles size={14} className="text-indigo-500" /> AI Matches
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="pipeline" className="flex-1 overflow-x-auto m-0 p-0 focus-visible:outline-none">
+          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="flex gap-4 h-full pb-4">
+              {stages.map(stage => (
+                <PipelineColumn 
+                  key={stage.id} 
+                  stage={stage} 
+                  applications={applications.filter(a => a.current_stage_id === stage.id)} 
+                />
+              ))}
+            </div>
 
-          <DragOverlay>
-            {activeApplication ? <SortableAppCard application={activeApplication} /> : null}
-          </DragOverlay>
-        </DndContext>
-      </div>
+            <DragOverlay>
+              {activeApplication ? <SortableAppCard application={activeApplication} /> : null}
+            </DragOverlay>
+          </DndContext>
+        </TabsContent>
+
+        <TabsContent value="matches" className="flex-1 overflow-y-auto m-0 p-0 pr-4 focus-visible:outline-none">
+          <JobMatches jobId={jobId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -74,9 +74,11 @@ import app.services.email as email_service
 email_service.send_verification_email = MagicMock()
 email_service.send_password_reset_email = MagicMock()
 
-import app.workers.tasks.matching as matching_tasks
-matching_tasks.match_candidates_task = MagicMock()
-matching_tasks.match_candidates_task.delay = MagicMock()
+import sys
+mock_matching = MagicMock()
+mock_matching.match_candidates_task = MagicMock()
+mock_matching.match_candidates_task.delay = MagicMock()
+sys.modules["app.workers.tasks.matching"] = mock_matching
 
 # ---------------------------------------------------------------------------
 # 2. Import the FastAPI app and models

@@ -27,7 +27,13 @@ class Candidate(Base, TimestampMixin):
     
     @property
     def resume(self):
-        return self.resumes[0] if self.resumes else None
+        from sqlalchemy import inspect
+        from sqlalchemy.orm.attributes import NO_VALUE
+        state = inspect(self)
+        if "resumes" in state.dict and state.dict["resumes"] is not NO_VALUE and state.dict["resumes"]:
+            return state.dict["resumes"][0]
+        return None
+
 
 class Resume(Base, TimestampMixin):
     __tablename__ = "resumes"

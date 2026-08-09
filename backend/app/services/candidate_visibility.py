@@ -63,5 +63,9 @@ async def sync_candidate_qdrant_orgs(
         )
         logger.info("sync_candidate_qdrant_orgs_success", candidate_id=str(candidate_id), org_ids=org_ids)
     except Exception as e:
-        logger.error("sync_candidate_qdrant_orgs_failed", candidate_id=str(candidate_id), error=str(e))
-        raise
+        if "404" in str(e) or "Not found" in str(e):
+            logger.warning("sync_candidate_qdrant_point_not_found_yet", candidate_id=str(candidate_id), point_id=point_id)
+        else:
+            logger.error("sync_candidate_qdrant_orgs_failed", candidate_id=str(candidate_id), error=str(e))
+            raise
+

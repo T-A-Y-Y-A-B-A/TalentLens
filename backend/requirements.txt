@@ -28,3 +28,4 @@ fastembed
 itsdangerous
 boto3
 pypdf
+aiosqlite

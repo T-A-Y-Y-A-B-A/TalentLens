@@ -9,7 +9,7 @@ from app.core.dependencies import get_current_user
 from app.models.identity import User
 from app.models.application import Application
 from app.models.ai import AIMatchResult
-from app.schemas.application import ApplicationCreate, ApplicationRead, ApplicationStageMove
+from app.schemas.application import ApplicationCreate, ApplicationRead, ApplicationWithDetailsRead, ApplicationStageMove
 from app.services.application import create_application, get_applications, get_application, move_application_stage
 
 router = APIRouter(prefix="/applications", tags=["applications"])
@@ -22,7 +22,7 @@ async def create_application_api(
 ):
     return await create_application(db, app_in, current_user)
 
-@router.get("", response_model=List[ApplicationRead])
+@router.get("", response_model=List[ApplicationWithDetailsRead])
 async def list_applications_api(
     job_id: Optional[UUID] = Query(None),
     candidate_id: Optional[UUID] = Query(None),
@@ -40,6 +40,7 @@ async def get_application_api(
     return await get_application(db, application_id, current_user)
 
 @router.patch("/{application_id}/stage", response_model=ApplicationRead)
+@router.put("/{application_id}/stage", response_model=ApplicationRead)
 async def move_application_stage_api(
     application_id: UUID,
     move_data: ApplicationStageMove,

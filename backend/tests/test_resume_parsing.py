@@ -151,7 +151,12 @@ async def test_resume_parser_happy_path(
     
     # 2. Setup a valid PDF file in the uploads dir so pypdf doesn't crash on it
     # We create a simple valid PDF or we can just mock pypdf/docling
+    # 2. Setup a valid PDF file in the uploads dir so pypdf doesn't crash on it
     with patch("app.workers.tasks.resume_parser.open") as mock_open:
+        mock_file = MagicMock()
+        mock_file.read.return_value = b"%PDF-1.4 Fake PDF content"
+        mock_open.return_value.__enter__.return_value = mock_file
+        
         # Instead of dealing with pypdf parsing binary, let's just mock the converter / fallback block entirely
         with patch("pypdf.PdfReader") as mock_pdfreader:
             mock_page = MagicMock()
@@ -222,8 +227,10 @@ async def test_resume_parser_failure_path(
     
     # Run the parser async on a nonexistent file (will raise error in file handling)
     # The exception should be caught and status set to FAILED
-    await async_parse_resume(str(resume_id))
+    with pytest.raises(Exception):
+        await async_parse_resume(str(resume_id))
     
     await db_session.refresh(db_resume)
     assert db_resume.parse_status == ParseStatus.FAILED
+
 

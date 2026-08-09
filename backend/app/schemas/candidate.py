@@ -65,7 +65,7 @@ class ResumeParsedDataRead(BaseModel):
     skills: List[str]
     experience: List[Dict[str, Any]]
     education: List[Dict[str, Any]]
-    certifications: List[Dict[str, Any]]
+    certifications: List[str]
     projects: List[Dict[str, Any]]
     
     model_config = ConfigDict(from_attributes=True)

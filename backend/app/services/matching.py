@@ -124,21 +124,34 @@ async def match_single_candidate(
         end_time = datetime.utcnow()
         latency_ms = (end_time - start_time).total_seconds() * 1000
         
-        match_result = AIMatchResult(
-            org_id=job.org_id,
-            job_id=job.id,
-            candidate_id=candidate.id,
-            match_pct=llm_response.match_pct,
-            ats_score=ats_score,
-            missing_skills=llm_response.missing_skills,
-            strengths=llm_response.strengths,
-            weaknesses=llm_response.weaknesses,
-            recommendation=llm_response.recommendation,
-            interview_questions=llm_response.interview_questions,
-            prompt_version=prompt_version,
-            cache_key=cache_key
-        )
-        db.add(match_result)
+        # Check if a lightweight result already exists
+        existing_res = await db.execute(select(AIMatchResult).where(AIMatchResult.cache_key == cache_key))
+        match_result = existing_res.scalars().first()
+        
+        if match_result:
+            match_result.match_pct = llm_response.match_pct
+            match_result.ats_score = ats_score
+            match_result.missing_skills = llm_response.missing_skills
+            match_result.strengths = llm_response.strengths
+            match_result.weaknesses = llm_response.weaknesses
+            match_result.recommendation = llm_response.recommendation
+            match_result.interview_questions = llm_response.interview_questions
+        else:
+            match_result = AIMatchResult(
+                org_id=job.org_id,
+                job_id=job.id,
+                candidate_id=candidate.id,
+                match_pct=llm_response.match_pct,
+                ats_score=ats_score,
+                missing_skills=llm_response.missing_skills,
+                strengths=llm_response.strengths,
+                weaknesses=llm_response.weaknesses,
+                recommendation=llm_response.recommendation,
+                interview_questions=llm_response.interview_questions,
+                prompt_version=prompt_version,
+                cache_key=cache_key
+            )
+            db.add(match_result)
         
         usage_log = AIUsageLog(
             org_id=job.org_id,
@@ -173,8 +186,8 @@ async def _execute_matching_pipeline(query_text: str, target_collection: str, or
         
     sparse_dict = await loop.run_in_executor(None, embed_sparse)
     
-    import qdrant_client
-    sparse_vector = qdrant_client.models.SparseVector(
+    import qdrant_client as qc
+    sparse_vector = qc.models.SparseVector(
         indices=sparse_dict.indices.tolist(),
         values=sparse_dict.values.tolist()
     )
@@ -190,7 +203,7 @@ async def _execute_matching_pipeline(query_text: str, target_collection: str, or
                 filters = [FieldCondition(key="org_id", match=MatchValue(value=str(org_ids[0])))]
             else:
                 # Qdrant match_any
-                filters = [FieldCondition(key="org_id", match=qdrant_client.models.MatchAny(any=[str(o) for o in org_ids]))]
+                filters = [FieldCondition(key="org_id", match=qc.models.MatchAny(any=[str(o) for o in org_ids]))]
 
     qdrant_filter = Filter(must=filters) if filters else None
     
@@ -224,8 +237,9 @@ async def _execute_matching_pipeline(query_text: str, target_collection: str, or
         return []
 
 async def run_job_matching_pipeline(job_id: str):
+    from sqlalchemy.orm import joinedload
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Job).where(Job.id == job_id))
+        result = await db.execute(select(Job).options(joinedload(Job.department)).where(Job.id == job_id))
         job = result.scalars().first()
         if not job:
             return
@@ -233,20 +247,12 @@ async def run_job_matching_pipeline(job_id: str):
         redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
         job_text = f"{job.title} {job.description} {job.requirements}"
         
-        # We don't filter candidates by org_id in Qdrant because they are a global pool.
-        # Isolation is enforced via the Application SQL join below.
-        candidate_ids = await _execute_matching_pipeline(job_text, "candidates", None)
-        
-        if not candidate_ids:
-            return []
-            
-        # SQL Isolation: only match candidates who have applied to this specific org
+        # SQL Isolation: only match candidates who have applied to this specific job
         from app.models.application import Application
         c_res = await db.execute(
             select(Candidate).distinct()
             .join(Application, Application.candidate_id == Candidate.id)
-            .where(Candidate.id.in_(candidate_ids))
-            .where(Application.org_id == job.org_id)
+            .where(Application.job_id == job.id)
         )
         candidates = {str(c.id): c for c in c_res.scalars().all()}
         
@@ -278,14 +284,60 @@ async def run_job_matching_pipeline(job_id: str):
             model = get_cross_encoder()
             scores = await loop.run_in_executor(None, model.predict, pairs)
             scored_candidates = sorted(zip(c_list, scores), key=lambda x: x[1], reverse=True)
-            final_ids = [x[0] for x in scored_candidates[:5]]
+            # Fetch all candidates, top 5 get LLM reasoning, rest get lightweight match result
+            final_ids = [x[0] for x in scored_candidates]
+            
+            # Normalize scores roughly to 0-100 range for display
+            min_score = min(scores) if scores else 0
+            max_score = max(scores) if scores else 1
+            if max_score == min_score:
+                normalized_scores = {cid: 80.0 for cid in c_list}
+            else:
+                normalized_scores = {
+                    c_list[i]: round(((scores[i] - min_score) / (max_score - min_score)) * 40 + 55, 1) 
+                    for i in range(len(c_list))
+                }
         else:
             final_ids = []
+            normalized_scores = {}
             
         results = []
-        for cid in final_ids:
-            res = await match_single_candidate(db, job, candidates[cid], parsed_resumes[cid], redis_client)
-            if res:
+        for i, cid in enumerate(final_ids):
+            if i < 5:
+                # Top 5: run deep LLM reasoning
+                res = await match_single_candidate(db, job, candidates[cid], parsed_resumes[cid], redis_client)
+                if res:
+                    results.append(res)
+            else:
+                # Ranks 6+: Lightweight result, no LLM call
+                ats_score = _calculate_ats_score(parsed_resumes[cid], job)
+                prompt_version = "matching_v1"
+                cache_key = _compute_cache_key(prompt_version, job, candidates[cid], parsed_resumes[cid])
+                
+                # Check DB first
+                db_result = await db.execute(select(AIMatchResult).where(AIMatchResult.cache_key == cache_key))
+                res = db_result.scalars().first()
+                
+                if not res:
+                    # Create placeholder MatchResult without LLM fields
+                    res = AIMatchResult(
+                        org_id=job.org_id,
+                        job_id=job.id,
+                        candidate_id=candidates[cid].id,
+                        match_pct=normalized_scores.get(cid, 60.0),
+                        ats_score=ats_score,
+                        missing_skills=[],
+                        strengths=[],
+                        weaknesses=[],
+                        recommendation="",
+                        interview_questions=[],
+                        prompt_version=prompt_version,
+                        cache_key=cache_key
+                    )
+                    db.add(res)
+                    await db.commit()
+                    await db.refresh(res)
+                
                 results.append(res)
                 
         await redis_client.aclose()

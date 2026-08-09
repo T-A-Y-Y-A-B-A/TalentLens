@@ -35,7 +35,7 @@ async def get_current_user(
     return user
 
 def require_permission(resource: str, action: str):
-    def permission_checker(current_user: User = Depends(get_current_user)):
+    async def permission_checker(current_user: User = Depends(get_current_user)):
         enforce_role(current_user.role.value, resource, action)
         return current_user
     return permission_checker

@@ -20,6 +20,9 @@ type CandidateProfile = {
   name: string;
   email: string;
   parsed_data?: ParsedData | null;
+  resume?: {
+    file_url: string;
+  } | null;
 };
 
 export default function CandidateProfilePage() {
@@ -130,13 +133,49 @@ export default function CandidateProfilePage() {
             </CardHeader>
             <CardContent>
               <div 
-                className="border-2 border-dashed border-zinc-200 rounded-xl p-8 text-center hover:bg-zinc-50 transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed border-zinc-200 rounded-xl p-8 text-center transition-colors ${!profile?.resume && !uploading ? 'hover:bg-zinc-50 cursor-pointer' : ''}`}
+                onClick={() => {
+                  if (!profile?.resume && !uploading) {
+                    fileInputRef.current?.click();
+                  }
+                }}
               >
                 {uploading ? (
                   <div className="flex flex-col items-center">
                     <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
                     <p className="text-sm font-medium text-zinc-900">Uploading...</p>
+                  </div>
+                ) : profile?.resume ? (
+                  <div className="flex flex-col items-center">
+                    <div className="h-12 w-12 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                    <p className="text-lg font-medium text-zinc-900 mb-4">Resume Uploaded</p>
+                    <div className="flex flex-col gap-3 w-full max-w-[220px]">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          let url = profile.resume!.file_url;
+                          if (url.startsWith("s3://")) {
+                            url = url.replace("s3://", "http://localhost:9000/");
+                          }
+                          window.open(url, "_blank");
+                        }}
+                      >
+                        <FileText className="mr-2 h-4 w-4" /> View PDF
+                      </Button>
+                      <Button 
+                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                      >
+                        <UploadCloud className="mr-2 h-4 w-4" /> Update Resume
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center">

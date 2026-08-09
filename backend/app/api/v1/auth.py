@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, Request, HTTPException
+from fastapi import APIRouter, Depends, Response, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from authlib.integrations.starlette_client import OAuth, OAuthError
@@ -40,7 +40,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str):
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
     )
 
-@router.post("/register", response_model=UserProfile)
+@router.post("/register", response_model=UserProfile, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 async def register(request: Request, user_in: UserRegister, db: AsyncSession = Depends(get_db)):
     user = await register_user(db, user_in.email, user_in.password, user_in.org_name)

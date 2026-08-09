@@ -102,3 +102,70 @@ async def get_job_matches(
     ]
     
     return {"status": "done", "results": results_list}
+
+@router.post("/{job_id}/matches/{candidate_id}/reason")
+@limiter.limit("10/minute")
+async def generate_on_demand_reasoning(
+    request: Request,
+    job_id: uuid.UUID,
+    candidate_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generates AI reasoning (strengths, weaknesses, etc.) for a specific candidate match on-demand.
+    """
+    # 1. Verify job access
+    from sqlalchemy.orm import joinedload
+    result = await db.execute(select(Job).options(joinedload(Job.department)).where(Job.id == job_id, Job.org_id == current_user.org_id))
+    job = result.scalars().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found or access denied")
+        
+    # 2. Fetch candidate and verify they applied to this job
+    from app.models.application import Application
+    from app.models.identity import Candidate
+    c_res = await db.execute(
+        select(Candidate)
+        .join(Application, Application.candidate_id == Candidate.id)
+        .where(Candidate.id == candidate_id, Application.job_id == job_id)
+    )
+    candidate = c_res.scalars().first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found or did not apply to this job")
+        
+    # 3. Fetch parsed resume
+    from app.models.recruitment import Resume, ResumeParsedData
+    r_res = await db.execute(
+        select(ResumeParsedData)
+        .join(Resume, ResumeParsedData.resume_id == Resume.id)
+        .where(Resume.candidate_id == candidate_id)
+        .order_by(Resume.created_at.desc())
+    )
+    parsed_resume = r_res.scalars().first()
+    if not parsed_resume:
+        raise HTTPException(status_code=400, detail="Candidate resume not parsed yet")
+        
+    # 4. Generate reasoning
+    from app.services.matching import match_single_candidate
+    redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    
+    try:
+        match_result = await match_single_candidate(db, job, candidate, parsed_resume, redis_client)
+        if not match_result:
+            raise HTTPException(status_code=500, detail="Failed to generate AI reasoning")
+            
+        await db.commit()
+        await db.refresh(match_result)
+        
+        return {
+            "candidate_id": str(match_result.candidate_id),
+            "match_pct": match_result.match_pct,
+            "missing_skills": match_result.missing_skills,
+            "strengths": match_result.strengths,
+            "weaknesses": match_result.weaknesses,
+            "recommendation": match_result.recommendation,
+            "interview_questions": match_result.interview_questions
+        }
+    finally:
+        await redis_client.aclose()

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { apiClient } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Loader2 } from "lucide-react";
+import { UserPlus, Loader2, Copy, Trash2, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,9 +20,13 @@ import { Label } from "@/components/ui/label";
 interface UserListItem {
   id: string;
   email: string;
+  full_name?: string;
   role: string;
   is_verified: boolean;
   created_at: string;
+  is_invite?: boolean;
+  status?: string;
+  link?: string;
 }
 
 export default function OrganizationUsersPage() {
@@ -35,6 +39,8 @@ export default function OrganizationUsersPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("recruiter");
   const [isInviting, setIsInviting] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   // Check if current user is hr_manager or super_admin
   const canManageRoles = checkRole(["hr_manager", "super_admin"]);
@@ -42,24 +48,50 @@ export default function OrganizationUsersPage() {
   const fetchUsers = async () => {
     if (user && (user as any).org_id) {
       try {
-        const { data } = await apiClient.GET("/api/v1/organizations/{id}/users", {
+        let combined: UserListItem[] = [];
+        
+        // Fetch real users
+        const { data: userData } = await apiClient.GET("/api/v1/organizations/{id}/users", {
           params: { path: { id: (user as any).org_id } }
         });
-        if (data) {
-          setUsers(data as any);
+        if (userData) {
+          combined = [...combined, ...(userData as any).map((u: any) => ({ ...u, is_invite: false }))];
+        }
+
+        // Fetch invites
+        if (canManageRoles) {
+          try {
+            const { data: inviteData } = await apiClient.GET("/api/v1/invites");
+            if (inviteData) {
+              const pendingInvites = (inviteData as any)
+                .filter((inv: any) => inv.status === 'pending')
+                .map((inv: any) => ({
+                  id: inv.id,
+                  email: inv.email,
+                  role: inv.role,
+                  is_verified: false,
+                  created_at: inv.created_at,
+                  is_invite: true,
+                  status: inv.status,
+                  link: inv.link
+                }));
+              combined = [...combined, ...pendingInvites];
+            }
+          } catch (err) {
+             console.error("Failed to fetch invites");
+          }
+        }
+
+        if (combined.length > 0) {
+          setUsers(combined);
         } else {
-          // Mock data fallback if endpoint doesn't return anything yet
+          // Fallback if completely empty
           setUsers([
-            { id: "1", email: user.email, role: user.role, is_verified: true, created_at: new Date().toISOString() },
-            { id: "2", email: "recruiter@demo.com", role: "recruiter", is_verified: true, created_at: new Date().toISOString() }
+            { id: "1", email: user.email, role: user.role, is_verified: true, created_at: new Date().toISOString() }
           ]);
         }
       } catch (e) {
-        // Fallback for mock environment
-        setUsers([
-          { id: "1", email: user?.email || "hr@demo.com", role: user?.role || "hr_manager", is_verified: true, created_at: new Date().toISOString() },
-          { id: "2", email: "recruiter@demo.com", role: "recruiter", is_verified: true, created_at: new Date().toISOString() }
-        ]);
+        console.error(e);
       } finally {
         setLoading(false);
       }
@@ -72,6 +104,15 @@ export default function OrganizationUsersPage() {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     if (!user || !(user as any).org_id) return;
+    const target = users.find(u => u.id === userId);
+    if (!target) return;
+    
+    if (target.is_invite) {
+      // For invites, we can't change role easily right now, they should be revoked and recreated.
+      alert("Please revoke the invite and create a new one to change the role.");
+      return;
+    }
+
     try {
       const { data, error } = await apiClient.PATCH("/api/v1/organizations/{id}/users/{user_id}/role", {
         params: { 
@@ -84,33 +125,56 @@ export default function OrganizationUsersPage() {
       });
       if (data) {
         fetchUsers();
-      } else {
-        // Mock success
-        setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
       }
     } catch (e) {
-      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      console.error(e);
     }
   };
 
-  const handleInviteSubmit = (e: React.FormEvent) => {
+  const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsInviting(true);
+    setInviteError("");
     
-    // Mock invite process
-    setTimeout(() => {
-      setUsers([...users, {
-        id: Math.random().toString(),
-        email: inviteEmail,
-        role: inviteRole,
-        is_verified: false,
-        created_at: new Date().toISOString()
-      }]);
+    try {
+      const { data, error } = await apiClient.POST("/api/v1/invites", {
+        body: {
+          email: inviteEmail,
+          role: inviteRole
+        }
+      });
+      
+      if (error) {
+        setInviteError((error as any).detail || "Failed to send invite.");
+      } else if (data) {
+        setIsInviteOpen(false);
+        setInviteEmail("");
+        setInviteRole("recruiter");
+        fetchUsers();
+      }
+    } catch (err) {
+      setInviteError("Network error. Please try again.");
+    } finally {
       setIsInviting(false);
-      setIsInviteOpen(false);
-      setInviteEmail("");
-      setInviteRole("recruiter");
-    }, 1000);
+    }
+  };
+  
+  const handleRevoke = async (inviteId: string) => {
+    if (!confirm("Are you sure you want to revoke this invite?")) return;
+    try {
+      await apiClient.POST("/api/v1/invites/{id}/revoke", {
+        params: { path: { id: inviteId } }
+      });
+      fetchUsers();
+    } catch (err) {
+      console.error("Failed to revoke invite", err);
+    }
+  };
+
+  const copyToClipboard = (link: string) => {
+    navigator.clipboard.writeText(link);
+    setCopiedLink(link);
+    setTimeout(() => setCopiedLink(null), 2000);
   };
 
   if (loading) return (
@@ -141,6 +205,11 @@ export default function OrganizationUsersPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                  {inviteError && (
+                    <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                      {inviteError}
+                    </div>
+                  )}
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email address</Label>
                     <Input 
@@ -162,6 +231,7 @@ export default function OrganizationUsersPage() {
                     >
                       <option value="recruiter">Recruiter</option>
                       <option value="interviewer">Interviewer</option>
+                      <option value="hr_manager">HR Manager</option>
                     </select>
                   </div>
                 </div>
@@ -183,29 +253,46 @@ export default function OrganizationUsersPage() {
         <table className="min-w-full divide-y divide-gray-300 dark:divide-zinc-700">
           <thead className="bg-gray-50 dark:bg-zinc-800">
             <tr>
-              <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-6">Email</th>
+              <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-6">Member</th>
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Status</th>
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-100">Role</th>
+              <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-zinc-700 bg-white dark:bg-zinc-900">
             {users.map((u) => (
               <tr key={u.id}>
-                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-gray-100 sm:pl-6">{u.email}</td>
+                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-gray-100 sm:pl-6">
+                  <div>{u.full_name || (u.email ? u.email.split("@")[0] : "Member")}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-normal">{u.email}</div>
+                  {u.is_invite && u.link && (
+                    <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                      <span>Invite Link:</span>
+                      <code className="bg-gray-100 px-1 rounded truncate max-w-[200px] inline-block">{u.link}</code>
+                      <button 
+                        onClick={() => copyToClipboard(u.link!)}
+                        className="text-indigo-600 hover:text-indigo-800 p-1"
+                        title="Copy Link"
+                      >
+                        {copiedLink === u.link ? <CheckCircle2 className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                      </button>
+                    </div>
+                  )}
+                </td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {u.is_verified ? (
+                  {!u.is_invite ? (
                     <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">Active</span>
                   ) : (
                     <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Invited (Pending)</span>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {canManageRoles ? (
+                  {canManageRoles && !u.is_invite ? (
                     <select
                       value={u.role}
                       onChange={(e) => handleRoleChange(u.id, e.target.value)}
                       disabled={u.id === user?.id && u.role === "hr_manager"} // Prevent self-demotion roughly
-                      className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+                      className="mt-1 block w-full rounded-md border-gray-300 py-1 pl-3 pr-8 text-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
                     >
                       <option value="hr_manager">HR Manager</option>
                       <option value="recruiter">Recruiter</option>
@@ -214,6 +301,19 @@ export default function OrganizationUsersPage() {
                   ) : (
                     <span className="capitalize">{u.role.replace("_", " ")}</span>
                   )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-right">
+                   {u.is_invite && (
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       onClick={() => handleRevoke(u.id)}
+                       className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                       title="Revoke Invite"
+                     >
+                       <Trash2 className="h-4 w-4" />
+                     </Button>
+                   )}
                 </td>
               </tr>
             ))}

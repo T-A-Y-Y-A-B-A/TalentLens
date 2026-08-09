@@ -19,14 +19,15 @@ from app.workers.tasks.resume_parser import parse_resume
 async def create_candidate(db: AsyncSession, obj_in: CandidateCreate, current_user: User) -> Candidate:
     enforce_role(current_user.role.value, "candidates", "manage")
     
-    # Optional: check if candidate already exists in org? We'll allow duplicates for now unless unique by email per org
+    profile = dict(obj_in.profile) if obj_in.profile else {}
+    profile["created_org_id"] = str(current_user.org_id)
     
     db_obj = Candidate(
         email=obj_in.email,
         name=obj_in.name,
         phone=obj_in.phone,
         source=obj_in.source,
-        profile=obj_in.profile,
+        profile=profile,
     )
     db.add(db_obj)
     await db.commit()
@@ -52,15 +53,26 @@ async def get_candidate(db: AsyncSession, candidate_id: UUID, current_user: User
     result = await db.execute(
         select(Candidate)
         .options(selectinload(Candidate.resumes))
-        .join(Application, Application.candidate_id == Candidate.id)
         .where(Candidate.id == candidate_id)
-        .where(Application.org_id == current_user.org_id)
     )
     db_obj = result.scalars().first()
     if not db_obj:
         raise DomainException("candidate_not_found", "Candidate not found", status_code=404)
         
+    # Check org isolation: if candidate has applications or created_org_id, verify match
+    app_res = await db.execute(
+        select(Application.org_id).where(Application.candidate_id == candidate_id)
+    )
+    org_ids = [str(row) for row in app_res.scalars().all()]
+    if db_obj.profile and isinstance(db_obj.profile, dict) and "created_org_id" in db_obj.profile:
+        org_ids.append(str(db_obj.profile["created_org_id"]))
+        
+    if org_ids and str(current_user.org_id) not in org_ids:
+        raise DomainException("candidate_not_found", "Candidate not found", status_code=404)
+        
     return db_obj
+
+
 
 async def update_candidate(db: AsyncSession, candidate_id: UUID, obj_in: CandidateUpdate, current_user: User) -> Candidate:
     enforce_role(current_user.role.value, "candidates", "manage")

@@ -31,6 +31,7 @@ class UserRoleUpdate(BaseModel):
 class UserListItem(BaseModel):
     id: UUID
     email: str
+    full_name: Optional[str] = None
     role: UserRole
     is_verified: bool
     created_at: datetime

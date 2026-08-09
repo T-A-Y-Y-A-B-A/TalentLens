@@ -293,54 +293,53 @@ function ProductShowcase() {
       <div className="max-w-7xl mx-auto px-6 space-y-32">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="order-2 lg:order-1 relative">
-            <div className="absolute inset-0 bg-indigo-100/50 rounded-3xl blur-2xl -z-10 transform -rotate-3"></div>
-            <div className="bg-white border border-zinc-200 shadow-xl rounded-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
-                <h4 className="font-bold text-zinc-900">Ranked Candidates</h4>
-                <span className="text-sm font-medium text-zinc-500">42 matches</span>
+            <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-zinc-100 rounded-xl p-8 space-y-6">
+              <div className="flex items-center justify-between pb-2">
+                <h4 className="font-bold text-zinc-900 font-serif text-lg">Ranked Candidates</h4>
+                <span className="text-sm text-zinc-500 font-serif">42 matches</span>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-indigo-100 bg-indigo-50/30">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold shrink-0">1</div>
-                <div className="flex-1 space-y-2">
+              <div className="flex flex-col sm:flex-row gap-5 p-5 rounded-xl border border-indigo-100 bg-[#F9FAFF]">
+                <div className="w-10 h-10 rounded-full bg-indigo-100/80 flex items-center justify-center text-indigo-700 font-bold shrink-0 font-serif">1</div>
+                <div className="flex-1 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-bold text-zinc-900">Sarah Jenkins</p>
-                      <p className="text-sm text-zinc-500">Staff Engineer</p>
+                      <p className="font-bold text-zinc-900 font-serif text-lg">Sarah Jenkins</p>
+                      <p className="text-[15px] text-zinc-500 font-serif">Staff Engineer</p>
                     </div>
-                    <div className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1">
+                    <div className="bg-indigo-100/50 text-indigo-700 px-3 py-1 rounded-md text-xs font-bold flex items-center gap-1">
                       <Sparkles size={12} /> 98%
                     </div>
                   </div>
-                  <p className="text-sm text-zinc-700"><strong>Strength:</strong> 5+ years building distributed Go systems.</p>
+                  <p className="text-[15px] text-zinc-700 font-serif"><strong className="font-bold">Strength:</strong> 5+ years building distributed Go systems.</p>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-zinc-100 bg-white opacity-70">
-                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold shrink-0">2</div>
-                <div className="flex-1 space-y-2">
+              <div className="flex flex-col sm:flex-row gap-5 p-5 rounded-xl border border-zinc-100 bg-white">
+                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500 font-bold shrink-0 font-serif">2</div>
+                <div className="flex-1 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-bold text-zinc-900">Marcus Chen</p>
-                      <p className="text-sm text-zinc-500">Backend Dev</p>
+                      <p className="font-bold text-zinc-900 font-serif text-lg">Marcus Chen</p>
+                      <p className="text-[15px] text-zinc-500 font-serif">Backend Dev</p>
                     </div>
-                    <div className="bg-zinc-100 text-zinc-700 px-2.5 py-1 rounded-md text-xs font-bold">
+                    <div className="text-zinc-500 px-3 py-1 text-xs font-bold font-serif">
                       91%
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-[10px] uppercase font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">Missing: Kubernetes</span>
+                    <span className="text-[11px] uppercase font-bold text-red-500 bg-red-50/50 px-2 py-0.5 rounded font-sans tracking-wide">Missing: Kubernetes</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          <div className="order-1 lg:order-2 space-y-6">
-            <h3 className="text-3xl lg:text-4xl font-bold text-zinc-900 tracking-tight">
+          <div className="order-1 lg:order-2 space-y-8 pl-4">
+            <h3 className="text-3xl lg:text-4xl font-bold text-zinc-900 tracking-tight font-serif">
               Precision matching, fully explained.
             </h3>
-            <div className="space-y-4 text-lg text-zinc-600 font-medium">
+            <div className="space-y-6 text-lg text-zinc-600 font-serif leading-relaxed">
               <p>We convert every resume into deep vector embeddings to understand the true context of a candidate's experience.</p>
               <p>Next, a hybrid search algorithm combines semantic meaning with hard filters to surface the most relevant talent.</p>
               <p>Finally, we rerank the top results and generate a clear, LLM-powered explanation of exactly why a candidate fits—and what they might be missing.</p>

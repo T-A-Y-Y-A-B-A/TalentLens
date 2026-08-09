@@ -37,6 +37,14 @@ class User(Base, TimestampMixin, TenantMixin):
     
     organization = relationship("Organization", back_populates="users")
 
+    @property
+    def full_name(self) -> str:
+        if not self.email:
+            return "User"
+        name_part = self.email.split("@")[0]
+        formatted = " ".join(word.capitalize() for word in name_part.replace(".", " ").replace("_", " ").split())
+        return formatted or self.email
+
 class RefreshToken(Base, TimestampMixin):
     __tablename__ = "refresh_tokens"
     
@@ -63,3 +71,22 @@ class EmailVerification(Base, TimestampMixin):
     token_hash = Column(String, nullable=False, unique=True)
     expires_at = Column(String, nullable=False)
     used_at = Column(String, nullable=True)
+
+class InviteStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    EXPIRED = "expired"
+    REVOKED = "revoked"
+
+class Invite(Base, TimestampMixin):
+    __tablename__ = "invites"
+    
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    email = Column(String, index=True, nullable=False)
+    role = Column(String, nullable=False)  # e.g., 'recruiter', 'interviewer'
+    org_id = Column(GUID(), ForeignKey("organizations.id"), index=True, nullable=False)
+    invited_by = Column(GUID(), ForeignKey("users.id"), index=True, nullable=False)
+    token = Column(String, nullable=False, unique=True)
+    status = Column(Enum(InviteStatus), default=InviteStatus.PENDING, nullable=False)
+    expires_at = Column(String, nullable=False)
+    accepted_at = Column(String, nullable=True)

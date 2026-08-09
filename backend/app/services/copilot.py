@@ -30,6 +30,9 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
     if request.job_id and not parsed_filter.job_id:
         parsed_filter.job_id = request.job_id
 
+    # DEBUG LOG 1: LLM Extraction
+    logger.info("copilot_debug_stage1_llm_extraction", parsed_filter=parsed_filter.model_dump())
+
     # 2. Construct Qdrant Query String
     search_components = []
     if parsed_filter.skills:
@@ -74,6 +77,20 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
             if "candidate_id" in point.payload:
                 candidate_ids.append(uuid.UUID(point.payload["candidate_id"]))
                 
+        # DEBUG LOG 2: Qdrant Search Results
+        qdrant_hits_debug = [
+            {
+                "candidate_id": point.payload.get("candidate_id"), 
+                "score": point.score, 
+                "org_ids": point.payload.get("org_ids")
+            } 
+            for point in search_result.points
+        ]
+        logger.info("copilot_debug_stage2_qdrant_search", 
+                    org_filter_applied=str(current_user.org_id), 
+                    total_hits=len(qdrant_hits_debug),
+                    hits=qdrant_hits_debug)
+                    
         logger.info("qdrant_search_completed", hits=len(candidate_ids))
     else:
         logger.info("skipping_qdrant_search", reason="No semantic terms extracted")
@@ -103,6 +120,14 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
         
     db_result = await db.execute(sql_query)
     rows = db_result.all()
+    
+    # DEBUG LOG 3: Postgres Filtering
+    postgres_out = [str(cand.id) for cand, _, _ in rows]
+    logger.info("copilot_debug_stage3_postgres_filter", 
+                ids_going_in=[str(x) for x in candidate_ids],
+                ids_coming_out=postgres_out,
+                job_id_filter=parsed_filter.job_id,
+                exclude_stages_filter=parsed_filter.exclude_stages)
     
     # Format results
     results = []

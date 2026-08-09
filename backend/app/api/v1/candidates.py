@@ -73,3 +73,21 @@ async def download_resume_api(
         raise DomainException("file_not_found", "The physical resume file was not found.", status_code=404)
         
     return FileResponse(file_path, filename=os.path.basename(file_path))
+
+@router.get("/{candidate_id}/resume/{resume_id}/parsed")
+async def get_parsed_data_api(
+    candidate_id: UUID,
+    resume_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.services.candidate import get_resume_by_id
+    from app.models.candidate import ResumeParsedData
+    from sqlalchemy import select
+    
+    await get_resume_by_id(db, candidate_id, resume_id, current_user)
+    
+    result = await db.execute(
+        select(ResumeParsedData).where(ResumeParsedData.resume_id == resume_id)
+    )
+    return result.scalars().first()

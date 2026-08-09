@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,15 +12,89 @@ import Link from "next/link";
 
 export default function ScheduleInterviewPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [candidates, setCandidates] = useState<any[]>([]);
+  const [interviewers, setInterviewers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Form State
+  const [applicationId, setApplicationId] = useState("");
+  const [interviewerId, setInterviewerId] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [duration, setDuration] = useState("60");
+  const [meetingLink, setMeetingLink] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
+      try {
+        const token = localStorage.getItem("access_token");
+        const headers = { Authorization: `Bearer ${token}` };
+        
+        // Fetch candidates (applications)
+        const appsRes = await fetch("http://localhost:8000/api/v1/applications", { headers });
+        if (appsRes.ok) {
+          const data = await appsRes.json();
+          setCandidates(data);
+        }
+
+        // Fetch interviewers (org users)
+        const usersRes = await fetch(`http://localhost:8000/api/v1/organizations/${user.org_id}/users`, { headers });
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          setInterviewers(data);
+        }
+      } catch (err) {
+        console.error("Error fetching form data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
-    // Mock save delay
-    setTimeout(() => {
-      router.push("/dashboard/interviews");
-    }, 1000);
+    
+    try {
+      const scheduled_at = `${date}T${time}:00Z`; // Simple ISO format for MVP
+      const token = localStorage.getItem("access_token");
+      
+      const payload = {
+        application_id: applicationId,
+        interviewer_id: interviewerId,
+        scheduled_at,
+        duration_minutes: parseInt(duration),
+        meeting_link: meetingLink || null,
+        notes: notes || null
+      };
+
+      const res = await fetch("http://localhost:8000/api/v1/interviews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (res.ok) {
+        router.push("/dashboard/interviews");
+      } else {
+        const err = await res.json();
+        console.error("Interview submission failed");
+      }
+    } catch (err) {
+      console.error("Interview submission error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -50,11 +125,16 @@ export default function ScheduleInterviewPage() {
                 id="candidate"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 required
+                value={applicationId}
+                onChange={(e) => setApplicationId(e.target.value)}
+                disabled={loading}
               >
-                <option value="" disabled selected>Select a candidate</option>
-                <option value="c1">Alice Johnson - Senior Frontend Engineer</option>
-                <option value="c2">Bob Williams - Product Manager</option>
-                <option value="c3">Charlie Brown - DevOps Engineer</option>
+                <option value="" disabled>Select a candidate</option>
+                {candidates.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.candidate?.name} - {c.job?.title}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -64,21 +144,31 @@ export default function ScheduleInterviewPage() {
                 id="interviewer"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 required
+                value={interviewerId}
+                onChange={(e) => setInterviewerId(e.target.value)}
+                disabled={loading}
               >
-                <option value="" disabled selected>Select an interviewer</option>
-                <option value="u1">Jane Smith (HR Manager)</option>
-                <option value="u2">Mark Davis (Interviewer)</option>
+                <option value="" disabled>Select an interviewer</option>
+                {interviewers.map((i) => {
+                  const name = i.full_name || (i.email ? i.email.split("@")[0] : "Member");
+                  const roleFormatted = i.role ? i.role.replace("_", " ") : "";
+                  return (
+                    <option key={i.id} value={i.id}>
+                      {name} ({roleFormatted})
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="date">Date</Label>
-                <Input type="date" id="date" required />
+                <Input type="date" id="date" required value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="time">Time</Label>
-                <Input type="time" id="time" required />
+                <Input type="time" id="time" required value={time} onChange={(e) => setTime(e.target.value)} />
               </div>
             </div>
 
@@ -87,14 +177,26 @@ export default function ScheduleInterviewPage() {
               <select
                 id="duration"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                defaultValue="60"
                 required
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
               >
                 <option value="30">30 minutes</option>
                 <option value="45">45 minutes</option>
                 <option value="60">60 minutes (1 hour)</option>
                 <option value="90">90 minutes (1.5 hours)</option>
               </select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="meeting_link">Meeting Link (Optional)</Label>
+              <Input 
+                type="url" 
+                id="meeting_link" 
+                placeholder="https://meet.google.com/..." 
+                value={meetingLink}
+                onChange={(e) => setMeetingLink(e.target.value)}
+              />
             </div>
 
             <div className="grid gap-2">
@@ -103,6 +205,8 @@ export default function ScheduleInterviewPage() {
                 id="notes" 
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" 
                 placeholder="Focus on React and system design..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
             </div>
           </CardContent>

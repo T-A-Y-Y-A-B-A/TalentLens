@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, Phone, Calendar, Briefcase, FileText, ChevronLeft, Sparkles, CheckCircle, Upload } from "lucide-react";
+import { Loader2, Mail, Phone, Calendar, Briefcase, FileText, ChevronLeft, Sparkles, CheckCircle, Upload, Download, Award, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -43,8 +43,6 @@ export default function CandidateDetailPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchCandidateData = async () => {
@@ -53,7 +51,26 @@ export default function CandidateDetailPage() {
           params: { path: { candidate_id: candidateId } }
         });
         if (candErr) throw candErr;
-        setCandidate(candData as any);
+        
+        let candidateWithData = { ...candData } as any;
+        
+        // Fetch parsed data if resume exists
+        if (candData && (candData as any).resume) {
+          try {
+            const token = localStorage.getItem("access_token");
+            const res = await fetch(`/api/v1/candidates/${candidateId}/resume/${(candData as any).resume.id}/parsed`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const parsedData = await res.json();
+              candidateWithData.parsed_data = parsedData;
+            }
+          } catch (e) {
+            console.error("Failed to fetch parsed data", e);
+          }
+        }
+        
+        setCandidate(candidateWithData);
 
         const { data: appData, error: appErr } = await apiClient.GET("/api/v1/applications", {
           params: { query: { candidate_id: candidateId } }
@@ -120,41 +137,6 @@ export default function CandidateDetailPage() {
     }
   };
 
-  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch(`/api/v1/candidates/${candidateId}/resume`, {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to upload resume");
-      }
-
-      const newResume = await response.json();
-      setCandidate(prev => prev ? { ...prev, resume: newResume } : null);
-      
-      // Clear the input so it can be re-selected if needed
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    } catch (err: any) {
-      alert(err.message || "Failed to upload resume");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-10rem)]">
@@ -186,14 +168,7 @@ export default function CandidateDetailPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            <input 
-              type="file" 
-              accept=".pdf" 
-              className="hidden" 
-              ref={fileInputRef} 
-              onChange={handleResumeUpload} 
-            />
-            {candidate.resume ? (
+            {candidate.resume && (
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center text-sm text-green-600 font-medium bg-green-50 px-2 py-1 rounded-md border border-green-200">
                   <CheckCircle className="mr-1 h-4 w-4" />
@@ -201,24 +176,15 @@ export default function CandidateDetailPage() {
                 </span>
                 <Button variant="outline" asChild>
                   <a 
-                    href={`/api/v1/candidates/${candidateId}/resume/${candidate.resume.id}/download`} 
+                    href={candidate.resume.file_url.replace("s3://", "http://localhost:9000/")} 
                     target="_blank" 
                     rel="noreferrer"
                   >
-                    <FileText className="mr-2 h-4 w-4" />
-                    View PDF
+                    <Download className="mr-2 h-4 w-4" />
+                    Resume
                   </a>
                 </Button>
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                  {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                  Update Resume
-                </Button>
               </div>
-            ) : (
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                Upload Resume
-              </Button>
             )}
 
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -343,6 +309,69 @@ export default function CandidateDetailPage() {
                           </div>
                         </div>
                       </div>
+                    ) : candidate.parsed_data ? (
+                      <>
+                        <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-gray-400" /> Candidate Summary
+                        </h4>
+                        <div className="space-y-6">
+                          {/* Skills */}
+                          <div className="border border-gray-100 rounded-lg p-4 bg-white shadow-sm">
+                            <h4 className="flex items-center gap-2 text-sm font-semibold text-indigo-600 mb-3">
+                              <Award className="h-4 w-4" /> Top Skills
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {candidate.parsed_data.skills.map((skill: string, i: number) => (
+                                <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Experience */}
+                          <div className="border border-gray-100 rounded-lg p-4 bg-white shadow-sm">
+                            <h4 className="flex items-center gap-2 text-sm font-semibold text-indigo-600 mb-4">
+                              <Briefcase className="h-4 w-4" /> Experience
+                            </h4>
+                            <div className="space-y-6">
+                              {candidate.parsed_data.experience.map((exp: any, i: number) => (
+                                <div key={i} className="relative pl-6 border-l-2 border-zinc-100 last:border-0 last:pb-0 pb-6">
+                                  <div className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-zinc-300 ring-4 ring-white" />
+                                  <h4 className="text-sm font-bold text-zinc-900">{exp.title}</h4>
+                                  <p className="text-sm font-medium text-indigo-600">{exp.company}</p>
+                                  <p className="text-xs text-zinc-500 mt-1 mb-2">
+                                    {exp.start_date || 'Unknown'} - {exp.end_date || 'Present'}
+                                  </p>
+                                  {exp.description && (
+                                    <p className="text-sm text-zinc-600 line-clamp-3">{exp.description}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* Education */}
+                          <div className="border border-gray-100 rounded-lg p-4 bg-white shadow-sm">
+                            <h4 className="flex items-center gap-2 text-sm font-semibold text-indigo-600 mb-4">
+                              <GraduationCap className="h-4 w-4" /> Education
+                            </h4>
+                            <div className="space-y-4">
+                              {candidate.parsed_data.education.map((edu: any, i: number) => (
+                                <div key={i} className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className="text-sm font-bold text-zinc-900">{edu.degree}</h4>
+                                    <p className="text-sm text-zinc-600">{edu.institution}</p>
+                                  </div>
+                                  <span className="text-xs font-medium bg-zinc-100 text-zinc-600 px-2 py-1 rounded">
+                                    {edu.graduation_year || 'Unknown'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     ) : (
                       <div className="text-center py-6 text-gray-500">
                         <Sparkles className="h-8 w-8 text-gray-300 mx-auto mb-2" />

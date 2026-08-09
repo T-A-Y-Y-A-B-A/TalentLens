@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     GROQ_MODEL_EXTRACT: str = "groq/openai/gpt-oss-20b"
     GROQ_MODEL_MATCH: str = "groq/openai/gpt-oss-120b"
     
+    # Email / SMTP Settings
+    EMAIL_BACKEND: str = "console"
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 settings = Settings()

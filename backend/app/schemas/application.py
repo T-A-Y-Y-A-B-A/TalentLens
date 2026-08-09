@@ -12,6 +12,14 @@ class ApplicationUpdate(BaseModel):
     status: Optional[str] = None
     # We do not update stage here, we use a specific move endpoint
 
+class ApplicationCandidate(BaseModel):
+    name: str
+    model_config = ConfigDict(from_attributes=True)
+
+class ApplicationJob(BaseModel):
+    title: str
+    model_config = ConfigDict(from_attributes=True)
+
 class ApplicationRead(BaseModel):
     id: UUID
     candidate_id: UUID
@@ -26,9 +34,11 @@ class ApplicationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ApplicationWithDetailsRead(ApplicationRead):
-    # Eagerly loaded relations for the Candidate Portal
+    # Eagerly loaded relations for the Candidate Portal and Frontend dropdowns
     job_title: Optional[str] = None
     stage_name: Optional[str] = None
+    candidate: Optional[ApplicationCandidate] = None
+    job: Optional[ApplicationJob] = None
 
 # ----------------- Stage Movement Schemas -----------------
 class ApplicationStageMove(BaseModel):

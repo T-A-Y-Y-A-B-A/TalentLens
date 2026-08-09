@@ -1,0 +1,320 @@
+import uuid
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
+
+from sqlalchemy.exc import IntegrityError
+from app.core.dependencies import get_current_user, get_db, require_permission
+from app.models.identity import User
+from app.models.interview import Interview
+from app.models.application import Application
+from app.models.recruitment import Job
+from app.models.candidate import Candidate
+from app.schemas.interview import InterviewCreate, InterviewUpdate, InterviewRead, InterviewDetailRead
+
+from app.workers.tasks.interview_email import send_interview_invite_email, send_interview_update_email, send_interview_cancel_email
+
+router = APIRouter(prefix="/interviews", tags=["interviews"])
+
+@router.post("", response_model=InterviewRead)
+async def create_interview(
+    interview_in: InterviewCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("interviews", "manage"))
+):
+    # Verify application exists and belongs to org
+    app_res = await db.execute(
+        select(Application).join(Job)
+        .options(joinedload(Application.job), joinedload(Application.candidate))
+        .where(Application.id == interview_in.application_id, Job.org_id == current_user.org_id)
+    )
+    application = app_res.scalars().first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found in your organization")
+
+    # Verify interviewer exists
+    int_res = await db.execute(select(User).where(User.id == interview_in.interviewer_id))
+    interviewer = int_res.scalars().first()
+    if not interviewer:
+        raise HTTPException(status_code=404, detail="Interviewer not found")
+
+    # Check for existing scheduled interview for this application at the given time slot
+    existing_res = await db.execute(
+        select(Interview).where(
+            Interview.application_id == interview_in.application_id,
+            Interview.scheduled_at == interview_in.scheduled_at,
+            Interview.status != "cancelled"
+        )
+    )
+    if existing_res.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An interview is already scheduled for this application at this time slot."
+        )
+
+    try:
+        interview = Interview(**interview_in.dict())
+        db.add(interview)
+        await db.commit()
+        await db.refresh(interview)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An interview is already scheduled for this application at this time slot."
+        )
+    
+    # Enqueue email task
+    send_interview_invite_email.delay(
+        str(interview.id),
+        application.candidate.email,
+        interviewer.email,
+        application.candidate.name,
+        interviewer.full_name,
+        application.job.title,
+        interview.scheduled_at,
+        interview.duration_minutes,
+        interview.meeting_link,
+        interview.notes
+    )
+    
+    return interview
+
+@router.get("", response_model=List[InterviewDetailRead])
+async def list_interviews(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("interviews", "manage"))
+):
+    # Fetch all interviews for the org
+    res = await db.execute(
+        select(Interview)
+        .join(Application, Interview.application_id == Application.id)
+        .join(Job, Application.job_id == Job.id)
+        .options(
+            joinedload(Interview.application).joinedload(Application.candidate),
+            joinedload(Interview.application).joinedload(Application.job)
+        )
+        .where(Job.org_id == current_user.org_id)
+        .order_by(Interview.scheduled_at)
+    )
+    interviews = res.scalars().all()
+    
+    # We need interviewer names. A simple way is to load users.
+    user_ids = {i.interviewer_id for i in interviews}
+    users = {}
+    if user_ids:
+        u_res = await db.execute(select(User).where(User.id.in_(user_ids)))
+        for u in u_res.scalars().all():
+            users[u.id] = u
+            
+    results = []
+    for i in interviews:
+        u = users.get(i.interviewer_id)
+        interviewer_name = u.full_name if u else "Unknown"
+        interviewer_role_str = u.role.value if (u and hasattr(u, "role") and hasattr(u.role, "value")) else (str(u.role) if u else "Interviewer")
+        results.append(InterviewDetailRead(
+            id=i.id,
+            application_id=i.application_id,
+            candidate_id=i.application.candidate_id,
+            job_id=i.application.job_id,
+            candidate_name=i.application.candidate.name,
+            candidate_email=i.application.candidate.email,
+            candidate_phone=i.application.candidate.phone,
+            job_title=i.application.job.title,
+            current_stage_id=i.application.current_stage_id,
+            interviewer_id=i.interviewer_id,
+            interviewer_name=interviewer_name,
+            interviewer_role=interviewer_role_str,
+            scheduled_at=i.scheduled_at,
+            duration_minutes=i.duration_minutes,
+            meeting_link=i.meeting_link,
+            notes=i.notes,
+            status=i.status,
+            created_at=i.created_at,
+            feedback=None
+        ))
+    return results
+
+@router.get("/{interview_id}", response_model=InterviewDetailRead)
+async def get_interview(
+    interview_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("interviews", "read"))
+):
+    res = await db.execute(
+        select(Interview)
+        .join(Application, Interview.application_id == Application.id)
+        .join(Job, Application.job_id == Job.id)
+        .options(
+            joinedload(Interview.application).joinedload(Application.candidate),
+            joinedload(Interview.application).joinedload(Application.job),
+            joinedload(Interview.feedback)
+        )
+        .where(Interview.id == interview_id, Job.org_id == current_user.org_id)
+    )
+    i = res.scalars().first()
+    if not i:
+        raise HTTPException(status_code=404, detail="Interview not found")
+        
+    u_res = await db.execute(select(User).where(User.id == i.interviewer_id))
+    u = u_res.scalars().first()
+    
+    interviewer_role_str = u.role.value if (u and hasattr(u, "role") and hasattr(u.role, "value")) else (str(u.role) if u else "Interviewer")
+    
+    fb_read = None
+    if i.feedback:
+        fb_read = FeedbackRead.model_validate(i.feedback)
+
+    return InterviewDetailRead(
+        id=i.id,
+        application_id=i.application_id,
+        candidate_id=i.application.candidate_id,
+        job_id=i.application.job_id,
+        candidate_name=i.application.candidate.name,
+        candidate_email=i.application.candidate.email,
+        candidate_phone=i.application.candidate.phone,
+        job_title=i.application.job.title,
+        current_stage_id=i.application.current_stage_id,
+        interviewer_id=i.interviewer_id,
+        interviewer_name=u.full_name if u else "Unknown",
+        interviewer_role=interviewer_role_str,
+        scheduled_at=i.scheduled_at,
+        duration_minutes=i.duration_minutes,
+        meeting_link=i.meeting_link,
+        notes=i.notes,
+        status=i.status,
+        created_at=i.created_at,
+        feedback=fb_read
+    )
+
+@router.patch("/{interview_id}", response_model=InterviewRead)
+async def update_interview(
+    interview_id: uuid.UUID,
+    update_in: InterviewUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("interviews", "manage"))
+):
+    res = await db.execute(
+        select(Interview)
+        .join(Application, Interview.application_id == Application.id)
+        .join(Job, Application.job_id == Job.id)
+        .options(
+            joinedload(Interview.application).joinedload(Application.candidate),
+            joinedload(Interview.application).joinedload(Application.job)
+        )
+        .where(Interview.id == interview_id, Job.org_id == current_user.org_id)
+    )
+    interview = res.scalars().first()
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+
+    update_data = update_in.dict(exclude_unset=True)
+    needs_email = False
+    
+    # Check if we need to send a rescheduled email
+    if 'scheduled_at' in update_data and update_data['scheduled_at'] != interview.scheduled_at:
+        needs_email = True
+    if 'meeting_link' in update_data and update_data['meeting_link'] != interview.meeting_link:
+        needs_email = True
+        
+    for field, value in update_data.items():
+        setattr(interview, field, value)
+        
+    await db.commit()
+    await db.refresh(interview)
+    
+    if needs_email:
+        u_res = await db.execute(select(User).where(User.id == interview.interviewer_id))
+        u = u_res.scalars().first()
+        send_interview_update_email.delay(
+            str(interview.id),
+            interview.application.candidate.email,
+            u.email if u else None,
+            interview.application.candidate.name,
+            u.full_name if u else "Interviewer",
+            interview.application.job.title,
+            interview.scheduled_at,
+            interview.duration_minutes,
+            interview.meeting_link,
+            interview.notes
+        )
+        
+    return interview
+
+@router.delete("/{interview_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_interview(
+    interview_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("interviews", "manage"))
+):
+    res = await db.execute(
+        select(Interview)
+        .join(Application, Interview.application_id == Application.id)
+        .join(Job, Application.job_id == Job.id)
+        .options(
+            joinedload(Interview.application).joinedload(Application.candidate),
+            joinedload(Interview.application).joinedload(Application.job)
+        )
+        .where(Interview.id == interview_id, Job.org_id == current_user.org_id)
+    )
+    interview = res.scalars().first()
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+        
+    interview.status = "cancelled"
+    await db.commit()
+    
+    u_res = await db.execute(select(User).where(User.id == interview.interviewer_id))
+    u = u_res.scalars().first()
+    
+    send_interview_cancel_email.delay(
+        str(interview.id),
+        interview.application.candidate.email,
+        u.email if u else None,
+        interview.application.candidate.name,
+        u.full_name if u else "Interviewer",
+        interview.application.job.title,
+        interview.scheduled_at
+    )
+
+
+# ---------------------------------------------------------------------------
+# Interview Feedback endpoints
+# ---------------------------------------------------------------------------
+
+from app.schemas.interview import FeedbackSubmit, FeedbackRead
+from app.services.interview_feedback_service import submit_feedback, get_feedback
+
+
+@router.post("/{interview_id}/feedback", response_model=FeedbackRead, status_code=201)
+async def create_or_update_feedback(
+    interview_id: uuid.UUID,
+    body: FeedbackSubmit,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("interviews", "update")),
+):
+    """
+    Submit (or re-generate) AI interview feedback for an interview.
+    Casbin check is also enforced at the service layer for defence-in-depth.
+    """
+    return await submit_feedback(db, interview_id, body.raw_notes, current_user)
+
+
+@router.get("/{interview_id}/feedback", response_model=FeedbackRead)
+async def read_feedback(
+    interview_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_permission("interviews", "read")),
+):
+    """
+    Retrieve existing AI feedback for an interview.
+    Returns 404 if feedback has not yet been generated.
+    """
+    from app.core.exceptions import DomainException
+    feedback = await get_feedback(db, interview_id, current_user)
+    if not feedback:
+        raise DomainException("feedback_not_found", "Feedback not yet generated for this interview", status_code=404)
+    return feedback
+

@@ -80,10 +80,15 @@ async def create_application(db: AsyncSession, obj_in: ApplicationCreate, curren
         
     return db_obj
 
+from sqlalchemy.orm import joinedload
+
 async def get_applications(db: AsyncSession, current_user: User, job_id: Optional[UUID] = None, candidate_id: Optional[UUID] = None) -> List[Application]:
     enforce_role(current_user.role.value, "applications", "manage")
     
-    query = select(Application).where(Application.org_id == current_user.org_id)
+    query = select(Application).options(
+        joinedload(Application.candidate),
+        joinedload(Application.job)
+    ).where(Application.org_id == current_user.org_id)
     
     if job_id:
         query = query.where(Application.job_id == job_id)

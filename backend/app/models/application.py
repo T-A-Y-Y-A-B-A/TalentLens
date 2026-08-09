@@ -15,6 +15,7 @@ class Application(Base, TimestampMixin, TenantMixin):
     applied_at = Column(String, nullable=False)
     
     candidate = relationship("Candidate", back_populates="applications")
+    job = relationship("Job", foreign_keys=[job_id], lazy="select")
     history = relationship("ApplicationStageHistory", back_populates="application")
 
 class ApplicationStageHistory(Base, TimestampMixin):

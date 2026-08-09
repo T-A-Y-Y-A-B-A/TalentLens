@@ -1,18 +1,16 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Float, Boolean, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
-
-from app.models.base import Base, JSONType
+from app.models.base import Base, GUID, JSONType
 
 class AIMatchResult(Base):
     __tablename__ = "ai_match_results"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
-    candidate_id = Column(UUID(as_uuid=True), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    org_id = Column(GUID(), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    job_id = Column(GUID(), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    candidate_id = Column(GUID(), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     
     match_pct = Column(Float, nullable=False)
     ats_score = Column(Float, nullable=True)
@@ -35,9 +33,9 @@ class AIMatchResult(Base):
 class AIUsageLog(Base):
     __tablename__ = "ai_usage_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    org_id = Column(GUID(), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     
     endpoint = Column(String, nullable=False) # e.g. "POST /api/v1/jobs/{id}/match"
     prompt_version = Column(String, nullable=False)

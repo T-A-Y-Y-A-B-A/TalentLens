@@ -167,12 +167,14 @@ async def get_candidate_me(
 ):
     from app.models.candidate import ResumeParsedData, Resume
     result = await db.execute(
-        select(ResumeParsedData)
-        .join(Resume, ResumeParsedData.resume_id == Resume.id)
+        select(Resume, ResumeParsedData)
+        .outerjoin(ResumeParsedData, ResumeParsedData.resume_id == Resume.id)
         .where(Resume.candidate_id == current_candidate.id)
         .order_by(Resume.created_at.desc())
     )
-    parsed_data = result.scalars().first()
+    row = result.first()
+    resume = row[0] if row else None
+    parsed_data = row[1] if row else None
     
     # We use from_attributes, so we can just attach it to the Pydantic schema dynamically
     # or to the SQLAlchemy object. Easiest is to construct the dict and parse it.
@@ -185,7 +187,8 @@ async def get_candidate_me(
         "profile": current_candidate.profile,
         "created_at": current_candidate.created_at,
         "updated_at": current_candidate.updated_at,
-        "parsed_data": parsed_data
+        "parsed_data": parsed_data,
+        "resume": resume
     }
     return candidate_dict
 
@@ -245,6 +248,38 @@ async def upload_candidate_resume(
     parse_resume.delay(str(db_obj.id))
     
     return db_obj
+
+@router.get("/resume/url")
+async def get_resume_presigned_url(
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    from app.core.storage import get_s3_client
+    
+    # Get active resume
+    result = await db.execute(
+        select(Resume)
+        .where(Resume.candidate_id == current_candidate.id)
+        .order_by(Resume.created_at.desc())
+    )
+    resume = result.scalars().first()
+    
+    if not resume:
+        raise HTTPException(status_code=404, detail="No resume found")
+        
+    bucket_name, object_name = resume.file_url.replace("s3://", "").split("/", 1)
+    
+    s3 = get_s3_client()
+    url = s3.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': bucket_name, 'Key': object_name},
+        ExpiresIn=3600
+    )
+    
+    # Replace internal docker hostname with localhost for browser access
+    url = url.replace("http://minio:9000", "http://localhost:9000")
+    
+    return {"url": url}
 
 @router.get("/applications", response_model=List[ApplicationWithDetailsRead])
 async def get_candidate_applications(
