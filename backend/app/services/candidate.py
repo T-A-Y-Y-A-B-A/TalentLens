@@ -35,8 +35,11 @@ async def create_candidate(db: AsyncSession, obj_in: CandidateCreate, current_us
     return db_obj
 
 async def get_candidates(db: AsyncSession, current_user: User) -> List[Candidate]:
-    enforce_role(current_user.role.value, "candidates", "manage")
+    enforce_role(current_user.role.value, "candidates", "read")
     
+    if current_user.role.value == "interviewer":
+        raise DomainException("forbidden", "You do not have permission to view all candidates", status_code=403)
+        
     from app.models.application import Application
     result = await db.execute(
         select(Candidate).distinct()
@@ -47,7 +50,7 @@ async def get_candidates(db: AsyncSession, current_user: User) -> List[Candidate
     return result.scalars().all()
 
 async def get_candidate(db: AsyncSession, candidate_id: UUID, current_user: User) -> Candidate:
-    enforce_role(current_user.role.value, "candidates", "manage")
+    enforce_role(current_user.role.value, "candidates", "read")
     
     from app.models.application import Application
     result = await db.execute(
@@ -59,7 +62,22 @@ async def get_candidate(db: AsyncSession, candidate_id: UUID, current_user: User
     if not db_obj:
         raise DomainException("candidate_not_found", "Candidate not found", status_code=404)
         
-    # Check org isolation: if candidate has applications or created_org_id, verify match
+    # Object-level check for interviewer
+    if current_user.role.value == "interviewer":
+        from app.models.recruitment import Interview
+        interview_res = await db.execute(
+            select(Interview.id)
+            .join(Application, Interview.application_id == Application.id)
+            .where(Interview.interviewer_id == current_user.id)
+            .where(Application.candidate_id == candidate_id)
+            .where(Interview.status != 'cancelled')
+            .limit(1)
+        )
+        if not interview_res.scalars().first():
+            raise DomainException("candidate_not_found", "Candidate not found", status_code=404)
+        return db_obj
+        
+    # Check org isolation for others: if candidate has applications or created_org_id, verify match
     app_res = await db.execute(
         select(Application.org_id).where(Application.candidate_id == candidate_id)
     )
@@ -129,7 +147,7 @@ async def upload_resume(db: AsyncSession, candidate_id: UUID, file: UploadFile, 
     return db_obj
 
 async def get_resume_by_id(db: AsyncSession, candidate_id: UUID, resume_id: UUID, current_user: User) -> Resume:
-    enforce_role(current_user.role.value, "candidates", "manage")
+    enforce_role(current_user.role.value, "candidates", "read")
     
     # Verify candidate first (checks tenant isolation)
     candidate = await get_candidate(db, candidate_id, current_user)

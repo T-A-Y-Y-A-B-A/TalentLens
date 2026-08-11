@@ -9,15 +9,25 @@ p, hr_manager, candidates, manage
 p, hr_manager, applications, manage
 p, hr_manager, invites, manage
 p, hr_manager, interviews, manage
+p, hr_manager, interviews, read
+p, hr_manager, analytics, read
+p, hr_manager, copilot, use
 
 p, recruiter, jobs, read
+p, recruiter, jobs, create
+p, recruiter, jobs, update
+p, recruiter, candidates, read
 p, recruiter, candidates, manage
 p, recruiter, applications, manage
 p, recruiter, interviews, manage
+p, recruiter, interviews, read
+p, recruiter, interviews, update
+p, recruiter, organization, read
+p, recruiter, analytics, read
+p, recruiter, copilot, use
 
 p, interviewer, interviews, read
 p, interviewer, interviews, update
-
-p, recruiter, interviews, update
+p, interviewer, candidates, read
 
 g, hr_manager, recruiter

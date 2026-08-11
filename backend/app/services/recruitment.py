@@ -133,7 +133,7 @@ async def get_job(db: AsyncSession, job_id: UUID, current_user: User) -> Job:
 
 
 async def create_job(db: AsyncSession, obj_in: JobCreate, current_user: User) -> Job:
-    enforce_role(current_user.role.value, "jobs", "manage")
+    enforce_role(current_user.role.value, "jobs", "create")
     
     if obj_in.department_id:
         dept = await db.execute(
@@ -179,7 +179,7 @@ async def create_job(db: AsyncSession, obj_in: JobCreate, current_user: User) ->
 
 
 async def update_job(db: AsyncSession, job_id: UUID, obj_in: JobUpdate, current_user: User) -> Job:
-    enforce_role(current_user.role.value, "jobs", "manage")
+    enforce_role(current_user.role.value, "jobs", "update")
     
     result = await db.execute(
         select(Job)

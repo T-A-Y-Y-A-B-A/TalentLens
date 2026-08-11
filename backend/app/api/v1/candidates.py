@@ -4,10 +4,10 @@ from typing import List
 from uuid import UUID
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_permission
 from app.models.identity import User
 from app.schemas.candidate import CandidateCreate, CandidateUpdate, CandidateRead, ResumeRead
-from app.services.candidate import create_candidate, get_candidates, get_candidate, update_candidate
+from app.services.candidate import create_candidate, get_candidates, get_candidate, update_candidate, get_resume_by_id, upload_resume
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -15,14 +15,14 @@ router = APIRouter(prefix="/candidates", tags=["candidates"])
 async def create_candidate_api(
     candidate_in: CandidateCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("candidates", "manage"))
 ):
     return await create_candidate(db, candidate_in, current_user)
 
 @router.get("", response_model=List[CandidateRead])
 async def list_candidates_api(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("candidates", "read"))
 ):
     return await get_candidates(db, current_user)
 

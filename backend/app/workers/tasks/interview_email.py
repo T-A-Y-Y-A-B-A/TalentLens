@@ -48,7 +48,9 @@ def send_interview_invite_email(
     scheduled_at: str,
     duration_minutes: int,
     meeting_link: Optional[str] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
+    *,
+    candidate_id: Optional[str] = None
 ):
     logger.info("send_interview_invite_email_started", interview_id=interview_id)
     
@@ -71,6 +73,25 @@ def send_interview_invite_email(
     to_emails = [email for email in [candidate_email, interviewer_email] if email]
     _send_email(subject, body, to_emails)
 
+    if candidate_id:
+        import asyncio
+        from app.core.database import AsyncSessionLocal, engine
+        from app.models.support import Notification
+        
+        async def _insert_notification():
+            async with AsyncSessionLocal() as db:
+                notif = Notification(
+                    recipient_type="candidate",
+                    recipient_id=candidate_id,
+                    type="interview_invite",
+                    channel="email",
+                    payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
+                )
+                db.add(notif)
+                await db.commit()
+            
+        asyncio.run(_insert_notification())
+
 
 @celery_app.task(name="send_interview_update_email")
 def send_interview_update_email(
@@ -83,7 +104,9 @@ def send_interview_update_email(
     scheduled_at: str,
     duration_minutes: int,
     meeting_link: Optional[str] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
+    *,
+    candidate_id: Optional[str] = None
 ):
     logger.info("send_interview_update_email_started", interview_id=interview_id)
     
@@ -106,6 +129,25 @@ def send_interview_update_email(
     to_emails = [email for email in [candidate_email, interviewer_email] if email]
     _send_email(subject, body, to_emails)
 
+    if candidate_id:
+        import asyncio
+        from app.core.database import AsyncSessionLocal, engine
+        from app.models.support import Notification
+        
+        async def _insert_notification():
+            async with AsyncSessionLocal() as db:
+                notif = Notification(
+                    recipient_type="candidate",
+                    recipient_id=candidate_id,
+                    type="interview_update",
+                    channel="email",
+                    payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
+                )
+                db.add(notif)
+                await db.commit()
+            
+        asyncio.run(_insert_notification())
+
 
 @celery_app.task(name="send_interview_cancel_email")
 def send_interview_cancel_email(
@@ -115,7 +157,9 @@ def send_interview_cancel_email(
     candidate_name: str,
     interviewer_name: str,
     job_title: str,
-    scheduled_at: str
+    scheduled_at: str,
+    *,
+    candidate_id: Optional[str] = None
 ):
     logger.info("send_interview_cancel_email_started", interview_id=interview_id)
     
@@ -130,3 +174,22 @@ def send_interview_cancel_email(
     
     to_emails = [email for email in [candidate_email, interviewer_email] if email]
     _send_email(subject, body, to_emails)
+
+    if candidate_id:
+        import asyncio
+        from app.core.database import AsyncSessionLocal, engine
+        from app.models.support import Notification
+        
+        async def _insert_notification():
+            async with AsyncSessionLocal() as db:
+                notif = Notification(
+                    recipient_type="candidate",
+                    recipient_id=candidate_id,
+                    type="interview_cancel",
+                    channel="email",
+                    payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
+                )
+                db.add(notif)
+                await db.commit()
+            
+        asyncio.run(_insert_notification())

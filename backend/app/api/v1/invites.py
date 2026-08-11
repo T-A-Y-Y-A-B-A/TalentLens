@@ -24,6 +24,9 @@ async def create_invite(
 ):
     enforce_role(current_user.role.value, "invites", "manage")
     
+    if current_user.role.value == "hr_manager" and obj_in.role == "hr_manager":
+        raise HTTPException(status_code=403, detail="HR Managers cannot invite other HR Managers")
+    
     # Check if user with this email already exists
     result = await db.execute(select(User).where(User.email == obj_in.email))
     if result.scalars().first():

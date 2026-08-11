@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_permission
 from app.models.identity import User
 from app.schemas.recruitment import DepartmentCreate, DepartmentUpdate, DepartmentRead
 from app.services.recruitment import (
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/departments", tags=["departments"])
 @router.get("", response_model=List[DepartmentRead])
 async def list_departments(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("departments", "read"))
 ):
     return await get_departments(db, current_user)
 

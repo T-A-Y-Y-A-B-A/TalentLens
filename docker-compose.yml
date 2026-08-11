@@ -149,7 +149,10 @@ services:
       - /app/node_modules
       - /app/.next
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
+      # Server-side only: used by next.config.ts rewrites to proxy /api/* to backend container
+      - BACKEND_URL=http://backend:8000
+      # NEXT_PUBLIC_API_URL is intentionally empty so browser fetches use relative /api/v1/... paths
+      - NEXT_PUBLIC_API_URL=
     depends_on:
       - backend
     networks:

@@ -9,8 +9,8 @@ from sqlalchemy.exc import IntegrityError
 from app.core.dependencies import get_current_user, get_db, require_permission
 from app.models.identity import User
 from app.models.interview import Interview
-from app.models.application import Application
-from app.models.recruitment import Job
+from app.models.application import Application, ApplicationStageHistory
+from app.models.recruitment import Job, PipelineStage
 from app.models.candidate import Candidate
 from app.schemas.interview import InterviewCreate, InterviewUpdate, InterviewRead, InterviewDetailRead
 
@@ -55,8 +55,51 @@ async def create_interview(
         )
 
     try:
+        from datetime import datetime, timezone
+        
+        # 1. Look up interview-type pipeline stage for this job
+        stage_res = await db.execute(
+            select(PipelineStage)
+            .where(PipelineStage.job_id == application.job_id)
+            .order_by(PipelineStage.order_index)
+        )
+        all_stages = stage_res.scalars().all()
+        interview_stage = next(
+            (s for s in all_stages if "interview" in s.name.lower()), None
+        )
+
+        # 2. Create interview
         interview = Interview(**interview_in.dict())
         db.add(interview)
+
+        # 3. Conditionally advance stage — in same transaction
+        history_row = None
+        if interview_stage:
+            current_stage = next(
+                (s for s in all_stages if s.id == application.current_stage_id), None
+            )
+            current_order = current_stage.order_index if current_stage else -1
+            if interview_stage.order_index > current_order:
+                old_stage_id = application.current_stage_id
+                application.current_stage_id = interview_stage.id
+                application.updated_at = datetime.now(timezone.utc)
+                history_row = ApplicationStageHistory(
+                    application_id=application.id,
+                    from_stage_id=old_stage_id,
+                    to_stage_id=interview_stage.id,
+                    moved_by=current_user.id,
+                    moved_at=datetime.now(timezone.utc).isoformat(),
+                    notes=f"Auto-advanced to Interview stage on interview creation (actor: {current_user.email})"
+                )
+                db.add(history_row)
+        else:
+            import structlog
+            structlog.get_logger().warning("interview_stage_not_found",
+                job_id=str(application.job_id),
+                org_id=str(current_user.org_id)
+            )
+
+        # 4. Single atomic commit
         await db.commit()
         await db.refresh(interview)
     except IntegrityError:
@@ -66,39 +109,50 @@ async def create_interview(
             detail="An interview is already scheduled for this application at this time slot."
         )
     
-    # Enqueue email task
-    send_interview_invite_email.delay(
-        str(interview.id),
-        application.candidate.email,
-        interviewer.email,
-        application.candidate.name,
-        interviewer.full_name,
-        application.job.title,
-        interview.scheduled_at,
-        interview.duration_minutes,
-        interview.meeting_link,
-        interview.notes
-    )
+    # Enqueue email task (non-blocking, fail-safe)
+    try:
+        send_interview_invite_email.delay(
+            str(interview.id),
+            application.candidate.email,
+            interviewer.email,
+            application.candidate.name,
+            interviewer.full_name,
+            application.job.title,
+            interview.scheduled_at,
+            interview.duration_minutes,
+            interview.meeting_link,
+            interview.notes,
+            candidate_id=str(application.candidate_id)
+        )
+    except Exception as e:
+        import structlog
+        structlog.get_logger().warning("failed_to_enqueue_interview_invite_email", error=str(e))
     
     return interview
 
 @router.get("", response_model=List[InterviewDetailRead])
 async def list_interviews(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("interviews", "manage"))
+    current_user: User = Depends(require_permission("interviews", "read"))
 ):
     # Fetch all interviews for the org
-    res = await db.execute(
+    query = (
         select(Interview)
         .join(Application, Interview.application_id == Application.id)
         .join(Job, Application.job_id == Job.id)
         .options(
             joinedload(Interview.application).joinedload(Application.candidate),
-            joinedload(Interview.application).joinedload(Application.job)
+            joinedload(Interview.application).joinedload(Application.job),
+            joinedload(Interview.feedback)
         )
         .where(Job.org_id == current_user.org_id)
         .order_by(Interview.scheduled_at)
     )
+    
+    if current_user.role.value == "interviewer":
+        query = query.where(Interview.interviewer_id == current_user.id)
+        
+    res = await db.execute(query)
     interviews = res.scalars().all()
     
     # We need interviewer names. A simple way is to load users.
@@ -114,6 +168,11 @@ async def list_interviews(
         u = users.get(i.interviewer_id)
         interviewer_name = u.full_name if u else "Unknown"
         interviewer_role_str = u.role.value if (u and hasattr(u, "role") and hasattr(u.role, "value")) else (str(u.role) if u else "Interviewer")
+        
+        fb_read = None
+        if i.feedback:
+            fb_read = FeedbackRead.model_validate(i.feedback)
+            
         results.append(InterviewDetailRead(
             id=i.id,
             application_id=i.application_id,
@@ -133,7 +192,7 @@ async def list_interviews(
             notes=i.notes,
             status=i.status,
             created_at=i.created_at,
-            feedback=None
+            feedback=fb_read
         ))
     return results
 
@@ -143,7 +202,7 @@ async def get_interview(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_permission("interviews", "read"))
 ):
-    res = await db.execute(
+    query = (
         select(Interview)
         .join(Application, Interview.application_id == Application.id)
         .join(Job, Application.job_id == Job.id)
@@ -154,6 +213,11 @@ async def get_interview(
         )
         .where(Interview.id == interview_id, Job.org_id == current_user.org_id)
     )
+    
+    if current_user.role.value == "interviewer":
+        query = query.where(Interview.interviewer_id == current_user.id)
+        
+    res = await db.execute(query)
     i = res.scalars().first()
     if not i:
         raise HTTPException(status_code=404, detail="Interview not found")
@@ -228,18 +292,23 @@ async def update_interview(
     if needs_email:
         u_res = await db.execute(select(User).where(User.id == interview.interviewer_id))
         u = u_res.scalars().first()
-        send_interview_update_email.delay(
-            str(interview.id),
-            interview.application.candidate.email,
-            u.email if u else None,
-            interview.application.candidate.name,
-            u.full_name if u else "Interviewer",
-            interview.application.job.title,
-            interview.scheduled_at,
-            interview.duration_minutes,
-            interview.meeting_link,
-            interview.notes
-        )
+        try:
+            send_interview_update_email.delay(
+                str(interview.id),
+                interview.application.candidate.email,
+                u.email if u else None,
+                interview.application.candidate.name,
+                u.full_name if u else "Interviewer",
+                interview.application.job.title,
+                interview.scheduled_at,
+                interview.duration_minutes,
+                interview.meeting_link,
+                interview.notes,
+                candidate_id=str(interview.application.candidate_id)
+            )
+        except Exception as e:
+            import structlog
+            structlog.get_logger().warning("failed_to_enqueue_interview_update_email", error=str(e))
         
     return interview
 
@@ -269,15 +338,20 @@ async def cancel_interview(
     u_res = await db.execute(select(User).where(User.id == interview.interviewer_id))
     u = u_res.scalars().first()
     
-    send_interview_cancel_email.delay(
-        str(interview.id),
-        interview.application.candidate.email,
-        u.email if u else None,
-        interview.application.candidate.name,
-        u.full_name if u else "Interviewer",
-        interview.application.job.title,
-        interview.scheduled_at
-    )
+    try:
+        send_interview_cancel_email.delay(
+            str(interview.id),
+            interview.application.candidate.email,
+            u.email if u else None,
+            interview.application.candidate.name,
+            u.full_name if u else "Interviewer",
+            interview.application.job.title,
+            interview.scheduled_at,
+            candidate_id=str(interview.application.candidate_id)
+        )
+    except Exception as e:
+        import structlog
+        structlog.get_logger().warning("failed_to_enqueue_interview_cancel_email", error=str(e))
 
 
 # ---------------------------------------------------------------------------

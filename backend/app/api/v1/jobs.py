@@ -4,7 +4,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_permission
 from app.models.identity import User
 from app.models.recruitment import JobStatus
 from app.schemas.recruitment import (
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 async def list_jobs(
     status: Optional[JobStatus] = Query(None, description="Filter by job status"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("jobs", "read"))
 ):
     return await get_jobs(db, current_user, status)
 

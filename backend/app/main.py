@@ -63,6 +63,7 @@ app.include_router(auth.router, prefix=settings.API_V1_STR)
 from app.api.v1 import organizations
 from app.api.v1.candidate_auth import router as candidate_auth_router
 from app.api.v1.invites import router as invites_router
+from app.api.v1.notifications import router as notifications_router
 
 app.include_router(organizations.router, prefix=settings.API_V1_STR)
 app.include_router(departments_router, prefix=settings.API_V1_STR)
@@ -72,6 +73,7 @@ app.include_router(applications_router, prefix=settings.API_V1_STR)
 app.include_router(matching_router, prefix=settings.API_V1_STR)
 app.include_router(candidate_auth_router, prefix=settings.API_V1_STR)
 app.include_router(invites_router, prefix=settings.API_V1_STR)
+app.include_router(notifications_router, prefix=settings.API_V1_STR)
 
 from app.api.v1.copilot import router as copilot_router
 from app.api.v1.analytics import router as analytics_router
@@ -80,6 +82,9 @@ from app.api.v1.interviews import router as interviews_router
 app.include_router(copilot_router, prefix=settings.API_V1_STR)
 app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(interviews_router, prefix=settings.API_V1_STR)
+
+from app.api.v1.dashboard import router as dashboard_router
+app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():

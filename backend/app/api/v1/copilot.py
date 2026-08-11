@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_permission
 from app.models.identity import User
 from app.schemas.copilot import CopilotQueryRequest, CopilotQueryResponse
 from app.services.copilot import query_copilot
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/copilot", tags=["copilot"])
 async def execute_copilot_query(
     request: CopilotQueryRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("copilot", "use"))
 ):
     """
     Executes a natural language query against the candidate pool.
