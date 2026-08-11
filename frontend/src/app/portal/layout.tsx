@@ -1,10 +1,11 @@
 "use client";
 
 import { useAuth } from "@/components/providers/AuthProvider";
-import { Loader2, LogOut, Briefcase, FileText, UserCircle } from "lucide-react";
+import { Loader2, LogOut, Briefcase, FileText, UserCircle, Bell } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import { Logo } from "@/components/ui/logo";
 
 export default function CandidatePortalLayout({
   children,
@@ -53,14 +54,7 @@ export default function CandidatePortalLayout({
       {/* Top Nav for Candidate */}
       <header className="bg-white border-b border-zinc-200 h-16 sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8">
-          <Link href="/portal/jobs" className="text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
-            <div className="bg-indigo-600 rounded p-1">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            TalentLens
-          </Link>
+          <Logo href="/portal/jobs" size="md" />
           
           <nav className="hidden md:flex items-center gap-6">
             <Link 
@@ -83,6 +77,13 @@ export default function CandidatePortalLayout({
         <div className="flex items-center gap-4">
           {user && (
             <>
+              <Link 
+                href="/portal/dashboard?tab=notifications" 
+                className={`text-zinc-500 hover:text-indigo-600 transition-colors mr-2 flex items-center`}
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+              </Link>
               <Link 
                 href="/portal/profile" 
                 className={`text-sm font-medium flex items-center gap-2 transition-colors mr-2 ${pathname?.includes("/profile") ? "text-indigo-600" : "text-zinc-500 hover:text-zinc-900"}`}

@@ -61,7 +61,7 @@ export default function OrganizationUsersPage() {
         // Fetch invites
         if (canManageRoles) {
           try {
-            const { data: inviteData } = await apiClient.GET("/api/v1/invites");
+            const { data: inviteData } = await apiClient.GET("/api/v1/invites" as any, {});
             if (inviteData) {
               const pendingInvites = (inviteData as any)
                 .filter((inv: any) => inv.status === 'pending')
@@ -137,7 +137,7 @@ export default function OrganizationUsersPage() {
     setInviteError("");
     
     try {
-      const { data, error } = await apiClient.POST("/api/v1/invites", {
+      const { data, error } = await apiClient.POST("/api/v1/invites" as any, {
         body: {
           email: inviteEmail,
           role: inviteRole
@@ -162,7 +162,7 @@ export default function OrganizationUsersPage() {
   const handleRevoke = async (inviteId: string) => {
     if (!confirm("Are you sure you want to revoke this invite?")) return;
     try {
-      await apiClient.POST("/api/v1/invites/{id}/revoke", {
+      await apiClient.POST("/api/v1/invites/{id}/revoke" as any, {
         params: { path: { id: inviteId } }
       });
       fetchUsers();
@@ -190,12 +190,12 @@ export default function OrganizationUsersPage() {
         
         {canManageRoles && (
           <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-            <DialogTrigger asChild>
+            <DialogTrigger render={
               <Button className="bg-indigo-600 hover:bg-indigo-700">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Invite Team Member
               </Button>
-            </DialogTrigger>
+            } />
             <DialogContent className="sm:max-w-[425px]">
               <form onSubmit={handleInviteSubmit}>
                 <DialogHeader>
@@ -231,7 +231,6 @@ export default function OrganizationUsersPage() {
                     >
                       <option value="recruiter">Recruiter</option>
                       <option value="interviewer">Interviewer</option>
-                      <option value="hr_manager">HR Manager</option>
                     </select>
                   </div>
                 </div>

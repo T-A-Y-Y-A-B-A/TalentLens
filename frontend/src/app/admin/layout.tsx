@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/logo";
 
 const navItems = [
   { name: "Overview", href: "/admin", icon: LayoutDashboard },
@@ -43,7 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <div className="w-64 flex-shrink-0 border-r border-zinc-200 bg-zinc-900 text-zinc-300">
         <div className="flex h-16 items-center px-6 border-b border-zinc-800">
-          <span className="text-lg font-bold text-white tracking-tight">TalentLens Admin</span>
+          <Logo href="/admin" size="md" className="[&>span]:text-white" />
         </div>
         
         <div className="flex flex-col justify-between h-[calc(100vh-4rem)]">

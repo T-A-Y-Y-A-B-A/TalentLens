@@ -35,7 +35,7 @@ export default function CopilotPage() {
     setError(null);
     try {
       const { apiClient } = await import("@/lib/api/client");
-      const res = await apiClient.POST("/api/v1/copilot/query", {
+      const res = await apiClient.POST("/api/v1/copilot/query" as any, {
         body: { query: searchQuery } as any
       });
       

@@ -46,7 +46,8 @@ export default function AnalyticsPage() {
     const fetchAnalytics = async () => {
       try {
         const token = localStorage.getItem("access_token") || "";
-        const res = await fetch("http://localhost:8000/api/v1/analytics/dashboard", {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+        const res = await fetch(`${API_BASE}/api/v1/analytics/dashboard`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (!res.ok) throw new Error("Failed to load analytics");

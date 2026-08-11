@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
-  Hexagon, 
   Menu, 
   PlayCircle, 
   Sparkles, 
-  Bot, 
   Search, 
   BotMessageSquare, 
   ShieldCheck, 
@@ -27,6 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Logo } from '@/components/ui/logo';
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -53,10 +53,7 @@ function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-zinc-900 group">
-          <Hexagon className="h-6 w-6 text-indigo-600 fill-indigo-600 group-hover:text-indigo-500 transition-colors" />
-          <span>TalentLens</span>
-        </Link>
+        <Logo href="/" size="md" />
 
         <nav className="hidden md:flex items-center gap-8">
           {navLinks.map((link) => (
@@ -86,10 +83,7 @@ function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="bg-white p-6">
                <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-              <Link href="/" className="flex items-center gap-2 font-bold text-xl text-zinc-900 mb-8 mt-4">
-                <Hexagon className="h-6 w-6 text-indigo-600 fill-indigo-600" />
-                <span>TalentLens</span>
-              </Link>
+              <Logo href="/" size="md" className="mb-8 mt-4" />
               <nav className="flex flex-col gap-6">
                 {navLinks.map((link) => (
                   <Link
@@ -159,58 +153,17 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative w-full max-w-lg mx-auto">
-          <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-100 to-white opacity-50 rounded-3xl blur-2xl -z-10" />
-          
-          <div className="bg-white rounded-2xl shadow-xl border border-zinc-100 p-6 sm:p-8 flex flex-col gap-6 relative overflow-hidden transform transition-transform hover:-translate-y-1 duration-500">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xl border border-indigo-100">
-                  AJ
-                </div>
-                <div>
-                  <h3 className="font-bold text-zinc-900 text-lg">Alex Johnson</h3>
-                  <p className="text-sm font-medium text-zinc-500">Senior Frontend Engineer</p>
-                </div>
-              </div>
-              <div className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm border border-indigo-100">
-                <Sparkles size={16} /> 94% Match
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Missing Skills</p>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-2.5 py-1 bg-red-50 text-red-600 rounded-md text-xs font-semibold border border-red-100">GraphQL</span>
-                <span className="px-2.5 py-1 bg-amber-50 text-amber-600 rounded-md text-xs font-semibold border border-amber-100">Docker</span>
-              </div>
-            </div>
-
-            <div className="bg-zinc-50 p-5 rounded-xl border border-zinc-100">
-              <div className="flex gap-3 items-start">
-                <div className="bg-indigo-100 p-1.5 rounded-md shrink-0 mt-0.5">
-                  <Bot size={16} className="text-indigo-700" />
-                </div>
-                <p className="text-sm text-zinc-600 leading-relaxed">
-                  <strong className="text-zinc-900 font-semibold">AI Reasoning:</strong> Strong alignment on React and TypeScript architecture. Lacks direct GraphQL experience, but has extensive REST API design history which translates well.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-3 pt-2">
-               <div className="h-10 flex-1 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-semibold opacity-90">Advance to Screen</div>
-               <div className="h-10 flex-1 bg-zinc-100 rounded-lg flex items-center justify-center text-zinc-600 text-sm font-semibold">Reject</div>
-            </div>
-          </div>
-          
-          <div className="absolute -right-6 -bottom-6 bg-white p-4 rounded-xl shadow-lg border border-zinc-100 hidden sm:flex items-center gap-3 animate-bounce" style={{ animationDuration: '3s' }}>
-             <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-             </div>
-             <p className="text-sm font-bold text-zinc-800">Top 1% Candidate</p>
-          </div>
+        {/* Hero illustration — replaces the old candidate card mockup */}
+        <div className="relative w-full max-w-lg mx-auto flex items-center justify-center">
+          {/* Soft indigo glow for visual depth, matching the old card's shadow treatment */}
+          <div className="absolute -inset-6 bg-gradient-to-tr from-indigo-100 to-white opacity-60 rounded-3xl blur-2xl -z-10" />
+          {/* Plain <img> intentionally — next/image strips GIF animation frames */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/hero-Illustration.gif"
+            alt="TalentLens hiring platform illustration"
+            className="w-full max-w-lg h-auto object-contain drop-shadow-xl"
+          />
         </div>
       </div>
     </section>
@@ -218,22 +171,50 @@ function Hero() {
 }
 
 function TrustStrip() {
+  const logos = [
+    { src: '/logos/abc.jpg',         alt: 'ABC logo',         w: 180, containerW: 'w-44' },
+    { src: '/logos/xyz.jpg',         alt: 'XYZ logo',         w: 135, containerW: 'w-32' },
+    { src: '/logos/digitalsoft.jpg', alt: 'DigitalSoft logo', w: 200, containerW: 'w-48' },
+    { src: '/logos/tw.jpg',          alt: 'TW logo',          w: 160, containerW: 'w-40' },
+  ];
+
   return (
     <div className="border-y border-zinc-100 bg-white py-10">
       <div className="max-w-7xl mx-auto px-6">
         <p className="text-center text-sm font-bold text-zinc-400 uppercase tracking-widest mb-8">
           Built for recruiting teams that move fast
         </p>
-        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 grayscale">
-          <div className="h-8 w-32 bg-zinc-200 rounded-md"></div>
-          <div className="h-8 w-24 bg-zinc-200 rounded-md"></div>
-          <div className="h-8 w-36 bg-zinc-200 rounded-md"></div>
-          <div className="h-8 w-28 bg-zinc-200 rounded-md hidden sm:block"></div>
+        {/* overflow-hidden clips the duplicate set — do not remove */}
+        <div className="overflow-hidden w-full">
+          {/*
+            animate-marquee scrolls the flex row from 0 → -50%.
+            Because the list is rendered TWICE back-to-back, the total width
+            is 2×, so -50% lands exactly back at the start — no visible jump.
+            ⚠ If you change the number of logos or gap, keep the list doubled
+              and keep the keyframe target at -50%.
+          */}
+          <div className="flex animate-marquee w-max items-center gap-16">
+            {[...logos, ...logos].map((logo, i) => (
+              <div
+                key={i}
+                className={`flex items-center justify-center ${logo.containerW} h-16 shrink-0`}
+              >
+                <Image
+                  src={logo.src}
+                  alt={logo.alt}
+                  width={logo.w}
+                  height={44}
+                  className="max-h-11 w-auto object-contain grayscale opacity-70 hover:opacity-100 hover:grayscale-0 transition duration-200"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 function WhyTalentLens() {
   const features = [
@@ -265,8 +246,25 @@ function WhyTalentLens() {
             A smarter way to build your team
           </h2>
           <p className="text-lg text-zinc-600">
-            We’ve replaced broken keyword searches with an intelligent architecture designed to understand both the role and the candidate.
+            We&#39;ve replaced broken keyword searches with an intelligent architecture designed to understand both the role and the candidate.
           </p>
+        </div>
+
+        {/* Section-level illustration: sits above the 3 feature cards */}
+        <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center mb-20">
+          <div className="space-y-4 text-zinc-600 text-lg font-medium leading-relaxed">
+            <p>Our AI doesn&#39;t just search — it <strong className="text-zinc-900">understands</strong>. Every resume is converted into rich vector embeddings that capture the true depth of a candidate&#39;s background.</p>
+            <p>Combine that with hybrid BM25 + semantic search and LLM-powered reasoning and you get matches that keyword filters will always miss.</p>
+          </div>
+          <div className="flex justify-center md:justify-end">
+            <Image
+              src="/illustrations/resume-matching.png"
+              alt="AI resume matching and candidate review"
+              width={480}
+              height={480}
+              className="w-full max-w-sm h-auto object-contain drop-shadow-md"
+            />
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-10 lg:gap-16">
@@ -340,9 +338,18 @@ function ProductShowcase() {
               Precision matching, fully explained.
             </h3>
             <div className="space-y-6 text-lg text-zinc-600 font-serif leading-relaxed">
-              <p>We convert every resume into deep vector embeddings to understand the true context of a candidate's experience.</p>
+              <p>We convert every resume into deep vector embeddings to understand the true context of a candidate&#39;s experience.</p>
               <p>Next, a hybrid search algorithm combines semantic meaning with hard filters to surface the most relevant talent.</p>
               <p>Finally, we rerank the top results and generate a clear, LLM-powered explanation of exactly why a candidate fits—and what they might be missing.</p>
+            </div>
+            <div className="flex justify-start">
+              <Image
+                src="/illustrations/analytics-growth.png"
+                alt="Analytics and matching growth chart"
+                width={400}
+                height={320}
+                className="w-full max-w-xs h-auto object-contain drop-shadow-sm"
+              />
             </div>
           </div>
         </div>
@@ -553,21 +560,39 @@ function Testimonials() {
 
 function FinalCTA() {
   return (
-    <section className="py-24 bg-indigo-50">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <h2 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-zinc-900 mb-6">
-          Ready to hire smarter?
-        </h2>
-        <p className="text-lg lg:text-xl text-zinc-600 font-medium mb-10 max-w-2xl mx-auto">
-          Join the next generation of recruiting teams using TalentLens to uncover hidden potential and move faster than the competition.
-        </p>
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-          <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold h-14 px-10 w-full sm:w-auto">
-            Book a Demo
-          </Button>
-          <Button variant="outline" size="lg" className="rounded-xl font-bold h-14 px-10 w-full sm:w-auto border-zinc-300 text-zinc-700 hover:bg-zinc-100">
-            Contact Us
-          </Button>
+    <section className="py-24 bg-white px-6">
+      <div className="bg-[#EEF0FD] rounded-3xl px-8 py-16 md:py-20 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+          {/* LEFT: existing content */}
+          <div className="text-center md:text-left">
+            <h2 className="text-4xl md:text-5xl font-serif font-bold text-zinc-900">
+              Ready to hire smarter?
+            </h2>
+            <p className="mt-4 text-lg text-zinc-600 font-medium">
+              Join the next generation of recruiting teams using TalentLens to uncover hidden potential and move faster than the competition.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold h-14 px-10 w-full sm:w-auto">
+                Book a Demo
+              </Button>
+              <Button variant="outline" size="lg" className="rounded-xl font-bold h-14 px-10 w-full sm:w-auto border-zinc-300 text-zinc-700 hover:bg-zinc-100 bg-white">
+                Contact Us
+              </Button>
+            </div>
+          </div>
+
+          {/* RIGHT: new video */}
+          <div className="rounded-2xl overflow-hidden shadow-xl">
+            <video
+              src="/videos/product-demo.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster="/videos/product-demo-poster.jpg"
+              className="w-full h-auto object-cover rounded-2xl"
+            />
+          </div>
         </div>
       </div>
     </section>
@@ -580,10 +605,7 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between gap-12 mb-16">
           <div className="md:w-1/3">
-            <Link href="/" className="flex items-center gap-2 font-bold text-xl text-zinc-900 mb-4">
-              <Hexagon className="h-6 w-6 text-indigo-600 fill-indigo-600" />
-              <span>TalentLens</span>
-            </Link>
+            <Logo href="/" size="md" className="mb-4" />
             <p className="text-zinc-500 font-medium leading-relaxed max-w-sm">
               The AI-native recruiting platform built for teams that move fast and hire smart.
             </p>

@@ -58,7 +58,22 @@ export default function LoginPage() {
       
       if (resData?.access_token) {
         login(resData.access_token);
-        router.push('/dashboard');
+        
+        try {
+          const meRes = await apiClient.GET('/api/v1/auth/me', {
+            headers: {
+              Authorization: `Bearer ${resData.access_token}`
+            }
+          });
+          
+          if (meRes.data?.is_platform_admin) {
+            router.push('/admin');
+          } else {
+            router.push('/dashboard');
+          }
+        } catch (e) {
+          router.push('/dashboard');
+        }
       }
     } catch (err) {
       setApiError('Failed to connect to the server. Please try again.');

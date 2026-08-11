@@ -1,11 +1,12 @@
 "use client";
 
 import { useAuth } from "@/components/providers/AuthProvider";
-import { Loader2, LayoutDashboard, Users, Briefcase, Settings, LogOut, Menu, Sparkles, BarChart3, Calendar, ShieldAlert } from "lucide-react";
+import { Loader2, LayoutDashboard, Users, Briefcase, Settings, LogOut, Menu, Sparkles, BarChart3, Calendar, ShieldAlert, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/logo";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -14,7 +15,7 @@ const navItems = [
   { name: "Interviews", href: "/dashboard/interviews", icon: Calendar },
   { name: "Copilot", href: "/dashboard/copilot", icon: Sparkles },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Invite Member", href: "/dashboard/invite-member", icon: UserPlus },
 ];
 
 export default function HRDashboardLayout({
@@ -66,12 +67,20 @@ export default function HRDashboardLayout({
         }`}
       >
         <div className="flex h-16 items-center justify-center border-b border-gray-200 px-6">
-          <span className="text-xl font-bold text-indigo-600">TalentLens</span>
+          <Logo href="/dashboard" size="md" />
         </div>
         
         <div className="flex flex-col justify-between h-[calc(100vh-4rem)]">
           <nav className="mt-6 px-4 space-y-1">
-            {navItems.map((item) => {
+            {navItems.filter((item) => {
+              if (user?.role === "interviewer") {
+                return ["Dashboard", "Interviews"].includes(item.name);
+              }
+              if (user?.role === "recruiter") {
+                return item.name !== "Invite Member";
+              }
+              return true;
+            }).map((item) => {
               const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
               return (
                 <Link
@@ -130,7 +139,7 @@ export default function HRDashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Header (Mobile mainly) */}
         <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 lg:hidden">
-          <span className="text-lg font-bold text-indigo-600">TalentLens</span>
+          <Logo href="/dashboard" size="sm" />
           <button
             className="text-gray-500 hover:text-gray-700 focus:outline-none"
             onClick={() => setSidebarOpen(true)}

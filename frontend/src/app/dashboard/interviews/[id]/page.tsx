@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -177,7 +177,8 @@ export default function InterviewDetailPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/${interviewId}`, {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_BASE}/api/v1/interviews/${interviewId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -225,7 +226,8 @@ export default function InterviewDetailPage() {
         notes: editNotes || null
       };
 
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/${interviewId}`, {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_BASE}/api/v1/interviews/${interviewId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -249,7 +251,8 @@ export default function InterviewDetailPage() {
     setStatusUpdating(true);
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/${interviewId}`, {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_BASE}/api/v1/interviews/${interviewId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -274,7 +277,8 @@ export default function InterviewDetailPage() {
     setFeedbackError(null);
     try {
       const token = localStorage.getItem("access_token");
-      const res = await fetch(`http://localhost:8000/api/v1/interviews/${interviewId}/feedback`, {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_BASE}/api/v1/interviews/${interviewId}/feedback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -311,9 +315,9 @@ export default function InterviewDetailPage() {
         <p className="text-sm text-gray-500">
           The requested interview could not be found or you do not have permission to view it within your organization.
         </p>
-        <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
-          <Link href="/dashboard/interviews">Return to Interviews</Link>
-        </Button>
+        <Link href="/dashboard/interviews" className={buttonVariants({ className: "bg-indigo-600 hover:bg-indigo-700 text-white" })}>
+          Return to Interviews
+        </Link>
       </div>
     );
   }
@@ -323,11 +327,9 @@ export default function InterviewDetailPage() {
       {/* Back button & Page Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild className="rounded-full shrink-0">
-            <Link href="/dashboard/interviews">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
+          <Link href="/dashboard/interviews" className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-full shrink-0" })}>
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight text-gray-900">
@@ -488,11 +490,9 @@ export default function InterviewDetailPage() {
                     <p className="text-sm font-semibold text-blue-900">Online Video Conference</p>
                     <p className="text-xs text-blue-700 truncate max-w-md mt-0.5">{interview.meeting_link}</p>
                   </div>
-                  <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
-                    <a href={interview.meeting_link} target="_blank" rel="noopener noreferrer">
-                      <Video className="mr-2 h-4 w-4" /> Join Video Call
-                    </a>
-                  </Button>
+                  <a href={interview.meeting_link} target="_blank" rel="noopener noreferrer" className={buttonVariants({ className: "bg-blue-600 hover:bg-blue-700 text-white shrink-0" })}>
+                    <Video className="mr-2 h-4 w-4" /> Join Video Call
+                  </a>
                 </div>
               ) : (
                 <p className="text-sm text-gray-500 italic">No meeting link assigned yet.</p>
@@ -625,21 +625,17 @@ export default function InterviewDetailPage() {
               <CardTitle className="text-base font-semibold text-gray-900">Quick Navigation</CardTitle>
             </CardHeader>
             <CardContent className="pt-5 space-y-3">
-              <Button variant="outline" className="w-full justify-start text-sm" asChild>
-                <Link href={`/dashboard/candidates/${interview.candidate_id}`}>
-                  <User className="mr-2 h-4 w-4 text-indigo-600" />
-                  View Candidate Profile
-                  <ExternalLink className="ml-auto h-3.5 w-3.5 text-gray-400" />
-                </Link>
-              </Button>
+              <Link href={`/dashboard/candidates/${interview.candidate_id}`} className={buttonVariants({ variant: "outline", className: "w-full justify-start text-sm" })}>
+                <User className="mr-2 h-4 w-4 text-indigo-600" />
+                View Candidate Profile
+                <ExternalLink className="ml-auto h-3.5 w-3.5 text-gray-400" />
+              </Link>
 
-              <Button variant="outline" className="w-full justify-start text-sm" asChild>
-                <Link href={`/dashboard/jobs/${interview.job_id}`}>
-                  <Briefcase className="mr-2 h-4 w-4 text-indigo-600" />
-                  View Job Posting
-                  <ExternalLink className="ml-auto h-3.5 w-3.5 text-gray-400" />
-                </Link>
-              </Button>
+              <Link href={`/dashboard/jobs/${interview.job_id}`} className={buttonVariants({ variant: "outline", className: "w-full justify-start text-sm" })}>
+                <Briefcase className="mr-2 h-4 w-4 text-indigo-600" />
+                View Job Posting
+                <ExternalLink className="ml-auto h-3.5 w-3.5 text-gray-400" />
+              </Link>
             </CardContent>
           </Card>
 

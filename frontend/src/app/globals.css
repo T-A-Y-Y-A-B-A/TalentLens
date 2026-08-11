@@ -128,3 +128,18 @@
     @apply font-sans;
   }
 }
+
+/* ── Trust-bar marquee ─────────────────────────────────────────────────────── */
+@keyframes scroll-x {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Duplicated list is exactly 2× wide, so -50% lands back at origin seamlessly */
+.animate-marquee {
+  animation: scroll-x 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

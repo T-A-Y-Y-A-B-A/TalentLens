@@ -191,8 +191,9 @@ function FeedbackModal({
     setError(null);
     try {
       const token = localStorage.getItem("access_token");
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetch(
-        `http://localhost:8000/api/v1/interviews/${interviewId}/feedback`,
+        `${API_BASE}/api/v1/interviews/${interviewId}/feedback`,
         {
           method: "POST",
           headers: {
@@ -325,12 +326,20 @@ export default function InterviewsPage() {
   useEffect(() => {
     const fetchInterviews = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/interviews", {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+        const res = await fetch(`${API_BASE}/api/v1/interviews`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           const data = await res.json();
           setInterviews(data);
+          const initialMap: Record<string, InterviewFeedback> = {};
+          data.forEach((i: any) => {
+            if (i.feedback) {
+              initialMap[i.id] = i.feedback;
+            }
+          });
+          setFeedbackMap((prev) => ({ ...initialMap, ...prev }));
         }
       } catch {
         console.error("Failed to fetch interviews");
@@ -339,15 +348,16 @@ export default function InterviewsPage() {
       }
     };
     fetchInterviews();
-  }, []);
+  }, [token]);
 
   const loadFeedback = useCallback(
     async (interviewId: string): Promise<InterviewFeedback | null> => {
       // Return cached if already loaded
       if (feedbackMap[interviewId]) return feedbackMap[interviewId];
       try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
         const res = await fetch(
-          `http://localhost:8000/api/v1/interviews/${interviewId}/feedback`,
+          `${API_BASE}/api/v1/interviews/${interviewId}/feedback`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.ok) {
@@ -382,12 +392,13 @@ export default function InterviewsPage() {
           <p className="text-gray-500 mt-1">Manage and track candidate interviews.</p>
         </div>
         {canSchedule && (
-          <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
-            <Link href="/dashboard/interviews/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Schedule Interview
-            </Link>
-          </Button>
+          <Link 
+            href="/dashboard/interviews/new" 
+            className="inline-flex items-center justify-center rounded-md font-medium h-9 px-4 text-sm bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Schedule Interview
+          </Link>
         )}
       </div>
 
@@ -468,16 +479,12 @@ export default function InterviewsPage() {
                         </Button>
                       )}
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-                        asChild
+                      <Link 
+                        href={`/dashboard/interviews/${interview.id}`}
+                        className="inline-flex items-center justify-center rounded-md font-medium h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
                       >
-                        <Link href={`/dashboard/interviews/${interview.id}`}>
-                          {interview.status === "completed" ? "View Notes" : "Details"}
-                        </Link>
-                      </Button>
+                        {interview.status === "completed" ? "View Notes" : "Details"}
+                      </Link>
                     </div>
                   </div>
 

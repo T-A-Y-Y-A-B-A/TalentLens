@@ -118,8 +118,9 @@ export function JobMatches({ jobId }: { jobId: string }) {
   const loadReasoning = async (candidateId: string) => {
     setLoadingReasoning(prev => ({ ...prev, [candidateId]: true }));
     try {
-      const token = localStorage.getItem("token") || "";
-      const res = await fetch(`http://localhost:8000/api/v1/jobs/${jobId}/matches/${candidateId}/reason`, {
+      const token = localStorage.getItem("access_token");
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${API_BASE}/api/v1/jobs/${jobId}/matches/${candidateId}/reason`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

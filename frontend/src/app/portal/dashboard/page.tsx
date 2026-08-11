@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Loader2, Upload, FileText, CheckCircle2, AlertCircle, UserCircle, Bell } from "lucide-react";
@@ -17,10 +18,21 @@ export default function CandidateDashboard() {
   const [loading, setLoading] = useState(true);
   const [candidate, setCandidate] = useState<CandidateRead | null>(null);
   const [applications, setApplications] = useState<ApplicationRead[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [activeTab, setActiveTab] = useState<"overview" | "profile" | "notifications">("overview");
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get("tab") as "overview" | "profile" | "notifications") || "overview";
+  const [activeTab, setActiveTab] = useState<"overview" | "profile" | "notifications">(initialTab);
+  
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "notifications" || tab === "profile" || tab === "overview") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
 
@@ -42,6 +54,15 @@ export default function CandidateDashboard() {
         }
       } catch {
         // Silently ignore if they can't fetch it yet
+      }
+
+      try {
+        const { data: notifData } = await apiClient.GET("/api/v1/notifications" as any, {});
+        if (notifData) {
+          setNotifications(notifData as any[]);
+        }
+      } catch {
+        // Silently ignore
       }
 
     } catch (err: any) {
@@ -266,7 +287,7 @@ export default function CandidateDashboard() {
                     id="bio" 
                     name="bio" 
                     className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50" 
-                    defaultValue={candidate.profile?.bio || ""}
+                    defaultValue={((candidate.profile as any)?.bio as string) || ""}
                   />
                 </div>
               </CardContent>
@@ -288,10 +309,39 @@ export default function CandidateDashboard() {
               <CardDescription>Recent updates and messages from recruiters.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12 text-zinc-500 border rounded-lg border-dashed bg-zinc-50">
-                <Bell className="h-8 w-8 mx-auto mb-3 text-zinc-300" />
-                <p>You have no new notifications.</p>
-              </div>
+              {notifications.length === 0 ? (
+                <div className="text-center py-12 text-zinc-500 border rounded-lg border-dashed bg-zinc-50">
+                  <Bell className="h-8 w-8 mx-auto mb-3 text-zinc-300" />
+                  <p>You have no new notifications.</p>
+                </div>
+              ) : (
+                <ul className="space-y-4">
+                  {notifications.map((notif: any) => (
+                    <li key={notif.id} className="p-4 border rounded-lg shadow-sm bg-white hover:border-indigo-200 transition-colors">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-zinc-900 flex items-center gap-2">
+                          <Bell className="h-4 w-4 text-indigo-500" />
+                          {notif.type === "interview_invite" ? "Please confirm your interview" : notif.type}
+                        </span>
+                        <span className="text-xs text-zinc-500">
+                          {new Date(notif.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="text-sm text-zinc-600 pl-6">
+                        {notif.type === "interview_invite" && (
+                          <p>You have an interview scheduled for <span className="font-medium">{notif.payload?.job_title}</span> at <span className="font-medium">{new Date(notif.payload?.scheduled_at).toLocaleString()}</span>.</p>
+                        )}
+                        {notif.type === "interview_update" && (
+                          <p>Your interview for <span className="font-medium">{notif.payload?.job_title}</span> has been updated to <span className="font-medium">{new Date(notif.payload?.scheduled_at).toLocaleString()}</span>.</p>
+                        )}
+                        {notif.type === "interview_cancel" && (
+                          <p>Your interview for <span className="font-medium">{notif.payload?.job_title}</span> has been cancelled.</p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </div>

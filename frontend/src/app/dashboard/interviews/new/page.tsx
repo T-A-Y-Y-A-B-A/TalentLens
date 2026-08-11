@@ -3,21 +3,24 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function ScheduleInterviewPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [interviewers, setInterviewers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Form State
   const [applicationId, setApplicationId] = useState("");
@@ -30,40 +33,50 @@ export default function ScheduleInterviewPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      if (authLoading) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
+        setLoading(true);
+        setError(null);
         const token = localStorage.getItem("access_token");
         const headers = { Authorization: `Bearer ${token}` };
         
         // Fetch candidates (applications)
-        const appsRes = await fetch("http://localhost:8000/api/v1/applications", { headers });
+        const appsRes = await fetch(`${API_BASE}/api/v1/applications`, { headers });
         if (appsRes.ok) {
           const data = await appsRes.json();
           setCandidates(data);
         }
 
         // Fetch interviewers (org users)
-        const usersRes = await fetch(`http://localhost:8000/api/v1/organizations/${user.org_id}/users`, { headers });
-        if (usersRes.ok) {
-          const data = await usersRes.json();
-          setInterviewers(data);
+        if (user.org_id) {
+          const usersRes = await fetch(`${API_BASE}/api/v1/organizations/${user.org_id}/users`, { headers });
+          if (usersRes.ok) {
+            const data = await usersRes.json();
+            setInterviewers(data);
+          }
         }
       } catch (err) {
-        console.error("Error fetching form data");
+        console.error("Error fetching form data", err);
+        setError("Failed to load applications or interviewers. Please refresh the page.");
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setError(null);
     
     try {
-      const scheduled_at = `${date}T${time}:00Z`; // Simple ISO format for MVP
+      const scheduled_at = `${date}T${time}:00Z`;
       const token = localStorage.getItem("access_token");
       
       const payload = {
@@ -75,7 +88,7 @@ export default function ScheduleInterviewPage() {
         notes: notes || null
       };
 
-      const res = await fetch("http://localhost:8000/api/v1/interviews", {
+      const res = await fetch(`${API_BASE}/api/v1/interviews`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,13 +98,20 @@ export default function ScheduleInterviewPage() {
       });
       
       if (res.ok) {
-        router.push("/dashboard/interviews");
+        const selectedApp = candidates.find(c => c.id === applicationId);
+        const jobId = selectedApp?.job_id || selectedApp?.job?.id;
+        if (jobId) {
+          router.push(`/dashboard/jobs/${jobId}`);
+        } else {
+          router.push("/dashboard/interviews");
+        }
       } else {
-        const err = await res.json();
-        console.error("Interview submission failed");
+        const errData = await res.json().catch(() => ({}));
+        setError(errData?.detail || errData?.message || "Failed to schedule interview.");
       }
     } catch (err) {
-      console.error("Interview submission error");
+      console.error("Interview submission error", err);
+      setError("Network error submitting interview. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -100,16 +120,21 @@ export default function ScheduleInterviewPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-full">
-          <Link href="/dashboard/interviews">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
+        <Link href="/dashboard/interviews" className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-full" })}>
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Schedule Interview</h1>
           <p className="text-gray-500 mt-1">Set up a new interview with a candidate.</p>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 shrink-0 text-red-500" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <Card>
         <form onSubmit={handleSubmit}>
@@ -130,11 +155,15 @@ export default function ScheduleInterviewPage() {
                 disabled={loading}
               >
                 <option value="" disabled>Select a candidate</option>
-                {candidates.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.candidate?.name} - {c.job?.title}
-                  </option>
-                ))}
+                {candidates.map((c) => {
+                  const candidateName = c.candidate?.name || c.candidate_name || "Applicant";
+                  const jobTitle = c.job?.title || c.job_title || "Position";
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {candidateName} - {jobTitle}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -212,11 +241,11 @@ export default function ScheduleInterviewPage() {
           </CardContent>
 
           <CardFooter className="flex justify-end gap-3 border-t bg-gray-50/50 px-6 py-4">
-            <Button type="button" variant="outline" asChild>
-              <Link href="/dashboard/interviews">Cancel</Link>
-            </Button>
-            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Link href="/dashboard/interviews" className={buttonVariants({ variant: "outline" })}>
+              Cancel
+            </Link>
+            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isSubmitting || loading}>
+              {(isSubmitting || loading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Schedule Interview
             </Button>
           </CardFooter>

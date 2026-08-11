@@ -134,9 +134,9 @@ function CandidateJobsContent() {
         return;
       }
 
-      if (data && data.task_id) {
+      if (data && (data as any).task_id) {
         setAnalysisStatus("Analyzing resume against open jobs...");
-        pollAnalysisStatus(data.task_id as string);
+        pollAnalysisStatus((data as any).task_id as string);
       }
     } catch (err) {
       toast.error("Error", { description: "Unexpected error starting analysis" });
@@ -153,13 +153,17 @@ function CandidateJobsContent() {
           params: { path: { task_id: taskId } }
         });
         
-        if (data?.ready) {
+        if ((data as any)?.ready) {
           clearInterval(interval);
           setAnalysisStatus("Analysis complete!");
           toast.success("Job Analysis Complete");
           setTimeout(() => {
             setIsAnalyzing(false);
-            if (orgId) fetchJobs(orgId);
+            if ((data as any).matched_jobs) {
+              setJobs((data as any).matched_jobs);
+            } else if (orgId) {
+              fetchJobs(orgId);
+            }
           }, 1000);
         } else if (attempts > 30) {
           // Timeout after ~1 minute

@@ -77,7 +77,7 @@ function RegisterContent() {
       setRegToken(token);
       setIsOauthRegistration(true);
       // Fetch preview
-      apiClient.GET("/api/v1/auth/register/oauth/preview", {
+      apiClient.GET("/api/v1/auth/register/oauth/preview" as any, {
         params: {
           query: { reg_token: token }
         }
@@ -103,7 +103,7 @@ function RegisterContent() {
     setApiError(null);
     try {
       if (isOauthRegistration && regToken) {
-        const { data: resData, error } = await apiClient.POST('/api/v1/auth/register/oauth', {
+        const { data: resData, error } = await apiClient.POST('/api/v1/auth/register/oauth' as any, {
           body: {
             reg_token: regToken,
             org_name: data.organizationName

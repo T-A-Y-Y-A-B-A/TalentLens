@@ -168,32 +168,31 @@ export default function CandidateDetailPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            {candidate.resume && (
+            {(candidate as any).resume && (
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center text-sm text-green-600 font-medium bg-green-50 px-2 py-1 rounded-md border border-green-200">
                   <CheckCircle className="mr-1 h-4 w-4" />
                   Resume Uploaded
                 </span>
-                <Button variant="outline" asChild>
-                  <a 
-                    href={candidate.resume.file_url.replace("s3://", "http://localhost:9000/")} 
-                    target="_blank" 
-                    rel="noreferrer"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Resume
-                  </a>
-                </Button>
+                <a 
+                  href={(candidate as any).resume.file_url.replace("s3://", "http://localhost:9000/")} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Resume
+                </a>
               </div>
             )}
 
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-              <DialogTrigger asChild>
+              <DialogTrigger render={
                 <Button className="bg-indigo-600 hover:bg-indigo-700">
                   <Briefcase className="mr-2 h-4 w-4" />
                   Add to Job
                 </Button>
-              </DialogTrigger>
+              } />
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Candidate to Job Pipeline</DialogTitle>
@@ -201,7 +200,7 @@ export default function CandidateDetailPage() {
                 <form onSubmit={handleAddToJob} className="space-y-4 pt-4">
                   <div className="space-y-2">
                     <Label>Select Job</Label>
-                    <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                    <Select value={selectedJobId} onValueChange={(val) => setSelectedJobId(val || "")}>
                       <SelectTrigger>
                         <SelectValue placeholder="Choose a job..." />
                       </SelectTrigger>
