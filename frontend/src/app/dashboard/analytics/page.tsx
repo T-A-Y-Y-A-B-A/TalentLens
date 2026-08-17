@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -126,22 +126,7 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">AI Match Success</p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">{data.ai_match_success_pct}%</h3>
-              </div>
-              <div className="h-12 w-12 bg-purple-50 rounded-full flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-            <div className="mt-4 text-sm text-gray-500">
-              Top 10 AI matches reaching interview stage
-            </div>
-          </CardContent>
-        </Card>
+
 
         <Card>
           <CardContent className="p-6">

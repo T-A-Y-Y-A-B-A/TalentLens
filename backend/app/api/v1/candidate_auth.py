@@ -200,6 +200,10 @@ async def apply_to_job(
     from app.workers.tasks.matching import match_candidates_task
     match_candidates_task.delay(str(payload.job_id))
         
+    # CRITICAL FIX: Ensure Qdrant is updated with the new org_id so Copilot can find them
+    from app.services.candidate_visibility import sync_candidate_qdrant_orgs
+    await sync_candidate_qdrant_orgs(db, current_candidate.id)
+        
     return app_obj
 
 @router.get("/me", response_model=CandidateRead)
@@ -422,9 +426,13 @@ async def get_candidate_jobs(
         select(Job, JobMatch.match_pct, JobMatch.matched_skills, JobMatch.missing_skills, Organization.name.label("organization_name"))
         .options(joinedload(Job.department))
         .join(Organization, Organization.id == Job.org_id)
-        .outerjoin(
+        .join(
             JobMatch,
-            and_(JobMatch.job_id == Job.id, JobMatch.candidate_id == current_candidate.id)
+            and_(
+                JobMatch.job_id == Job.id, 
+                JobMatch.candidate_id == current_candidate.id,
+                JobMatch.match_pct >= 35
+            )
         )
         .where(Job.status == JobStatus.OPEN)
         .where(Job.deleted_at.is_(None))
@@ -451,7 +459,7 @@ async def get_candidate_jobs(
             "work_type": job.work_type,
             "created_at": job.created_at,
             "org_id": job.org_id,
-            "match_pct": pct if pct is not None else 0,
+            "match_pct": pct,
             "matched_skills": matched if matched is not None else [],
             "missing_skills": missing if missing is not None else required_skills,
         }

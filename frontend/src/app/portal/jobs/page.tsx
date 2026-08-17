@@ -44,6 +44,7 @@ function CandidateJobsContent() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [resumeRequired, setResumeRequired] = useState(false);
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>("");
@@ -70,8 +71,14 @@ function CandidateJobsContent() {
       });
       if (data && (data as any).jobs) {
         setJobs((data as any).jobs as Job[]);
+        if ((data as any).status === "resume_required") {
+          setResumeRequired(true);
+        } else {
+          setResumeRequired(false);
+        }
       } else if (Array.isArray(data)) {
         setJobs(data as unknown as Job[]);
+        setResumeRequired(false);
       }
       
       const { data: appsData } = await apiClient.GET("/api/v1/candidate-portal/applications", {});
@@ -214,7 +221,16 @@ function CandidateJobsContent() {
         </Button>
       </div>
 
-      {jobs.length === 0 ? (
+      {resumeRequired ? (
+        <Card className="bg-zinc-50 border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
+            <h3 className="text-lg font-medium text-zinc-900">No resume uploaded</h3>
+            <p className="text-zinc-500 mt-1">Upload your resume first to see matched jobs.</p>
+            <Button className="mt-4 bg-indigo-600 hover:bg-indigo-700" onClick={() => router.push("/portal/profile")}>Go to Profile to Upload</Button>
+          </CardContent>
+        </Card>
+      ) : jobs.length === 0 ? (
         <Card className="bg-zinc-50 border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Briefcase className="h-12 w-12 text-zinc-300 mb-4" />

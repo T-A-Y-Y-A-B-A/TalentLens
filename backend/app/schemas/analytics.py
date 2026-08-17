@@ -19,7 +19,6 @@ class AnalyticsDashboardResponse(BaseModel):
     time_to_hire_trend: float
     pipeline_conversion_pct: float
     pipeline_conversion_trend: float
-    ai_match_success_pct: float
     active_jobs_count: int
     active_jobs_depts: int
     pipeline_trend_data: List[TrendDataPoint]

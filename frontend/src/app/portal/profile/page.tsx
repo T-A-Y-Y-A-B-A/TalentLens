@@ -29,6 +29,7 @@ export default function CandidateProfilePage() {
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [isStuck, setIsStuck] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -50,13 +51,25 @@ export default function CandidateProfilePage() {
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    let stuckTimeout: NodeJS.Timeout;
+
     if (profile?.resume && !profile?.parsed_data) {
+      // Start polling every 5 seconds
       interval = setInterval(() => {
         fetchProfile();
       }, 5000);
+
+      // Show warning after 45 seconds if still analyzing
+      stuckTimeout = setTimeout(() => {
+        setIsStuck(true);
+      }, 45000);
+    } else {
+      setIsStuck(false);
     }
+
     return () => {
       if (interval) clearInterval(interval);
+      if (stuckTimeout) clearTimeout(stuckTimeout);
     };
   }, [profile?.resume, profile?.parsed_data]);
 
@@ -220,6 +233,25 @@ export default function CandidateProfilePage() {
                     <Loader2 className="h-12 w-12 text-indigo-600 animate-spin mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-zinc-900">Analyzing Resume...</h3>
                     <p className="text-zinc-500 mt-2 text-sm">Our AI is extracting your skills and experience. This usually takes 1-2 minutes.</p>
+                    
+                    {isStuck && (
+                      <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="text-amber-800 text-sm font-medium mb-3 text-left">
+                          This is taking longer than usual. There might be a processing delay or an internet issue.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="bg-white w-full border-amber-200 hover:bg-amber-100 text-amber-900"
+                          onClick={() => {
+                            setIsStuck(false);
+                            fetchProfile();
+                          }}
+                        >
+                          Retry Now
+                        </Button>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>

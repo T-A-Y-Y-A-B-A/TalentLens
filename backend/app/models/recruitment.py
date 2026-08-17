@@ -34,6 +34,7 @@ class Job(Base, TimestampMixin, TenantMixin):
     requirements = Column(JSONType(), default={})
     work_type = Column(Enum(WorkType), nullable=False)
     status = Column(Enum(JobStatus), default=JobStatus.DRAFT, nullable=False)
+    location = Column(String, nullable=True)
     created_by = Column(GUID(), ForeignKey("users.id"), nullable=True)
     
     department = relationship("Department", back_populates="jobs")

@@ -5,7 +5,17 @@ celery_app = Celery(
     "talentlens",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.services.email", "app.workers.tasks", "app.workers.tasks.resume_parser", "app.workers.tasks.matching", "app.workers.tasks.email", "app.workers.tasks.interview_email"]
+    include=[
+        "app.services.email", 
+        "app.workers.tasks", 
+        "app.workers.tasks.resume_parser", 
+        "app.workers.tasks.matching", 
+        "app.workers.tasks.email", 
+        "app.workers.tasks.interview_email",
+        "app.workers.tasks.keyword_matching",
+        "app.workers.tasks.matching_candidate",
+        "app.workers.tasks.embed_job"
+    ]
 )
 
 celery_app.conf.update(

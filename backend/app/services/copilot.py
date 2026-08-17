@@ -14,7 +14,65 @@ from app.models.identity import User
 from app.models.candidate import Candidate, ResumeParsedData, Resume
 from app.models.application import Application
 
+from sqlalchemy import func, or_
+import structlog
+
 logger = structlog.get_logger()
+
+async def get_exact_skill_matches(db: AsyncSession, parsed_filter: CopilotFilter) -> set[uuid.UUID]:
+    """
+    Direct Postgres check — catches literal/substring matches that
+    Qdrant's semantic ranking might not surface in its top-K.
+    """
+    terms = []
+    if parsed_filter.skills: terms.extend(parsed_filter.skills)
+    if parsed_filter.keywords: terms.extend(parsed_filter.keywords)
+    
+    if not terms:
+        return set()
+
+    import sqlalchemy
+    conditions = []
+    for term in terms:
+        # substring match against the skills array, case-insensitive
+        conditions.append(
+            func.cast(ResumeParsedData.skills, sqlalchemy.String).ilike(f'%{term}%')
+        )
+
+    stmt = select(Candidate.id).join(
+        Resume, Resume.candidate_id == Candidate.id
+    ).join(
+        ResumeParsedData, ResumeParsedData.resume_id == Resume.id
+    ).where(or_(*conditions))
+    
+    result = await db.execute(stmt)
+    return {row[0] for row in result.all()}
+
+def validate_candidate_against_filter(candidate_skills: list[str], parsed_filter: CopilotFilter) -> bool:
+    """
+    Final gate: confirms a candidate genuinely satisfies the parsed filter,
+    regardless of which leg (Qdrant or exact-match) surfaced them.
+    """
+    normalized_skills = {s.lower() for s in (candidate_skills or [])}
+
+    if parsed_filter.skills:
+        if not any(
+            any(req.lower() in skill for skill in normalized_skills)
+            for req in parsed_filter.skills
+        ):
+            return False
+
+    if parsed_filter.keywords:
+        if not any(
+            any(kw.lower() in skill for skill in normalized_skills)
+            for kw in parsed_filter.keywords
+        ):
+            return False
+
+    # extend with certifications, min_experience, location, etc. as those fields
+    # already have structured data available on Candidate
+
+    return True
 
 async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_user: User) -> CopilotQueryResponse:
     # 1. Parse natural language into structured CopilotFilter
@@ -70,7 +128,8 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
             query=dense_vector,
             using="dense",
             query_filter=org_filter,
-            limit=50
+            limit=50,
+            score_threshold=0.75  # Filter out low-relevance semantic matches
         )
         
         for point in search_result.points:
@@ -95,6 +154,12 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
     else:
         logger.info("skipping_qdrant_search", reason="No semantic terms extracted")
         
+    # NEW: Get exact skill matches from Postgres
+    exact_ids = await get_exact_skill_matches(db, parsed_filter)
+    
+    # Combine Qdrant semantic matches and Postgres exact matches
+    combined_ids = set(candidate_ids) | exact_ids
+
     # 3. Postgres Filter (Intersection)
     sql_query = select(Candidate, ResumeParsedData, Application).distinct(Candidate.id).join(
         Application, Application.candidate_id == Candidate.id
@@ -104,10 +169,17 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
         ResumeParsedData, ResumeParsedData.resume_id == Resume.id
     ).where(
         Application.org_id == current_user.org_id
+    ).order_by(
+        Candidate.id, Resume.created_at.desc()
     )
     
-    if candidate_ids:
-        sql_query = sql_query.where(Candidate.id.in_(candidate_ids))
+    # Apply combined semantic & exact ID filter if any search terms were provided
+    if search_text.strip():
+        if combined_ids:
+            sql_query = sql_query.where(Candidate.id.in_(combined_ids))
+        else:
+            # Search was performed but yielded zero matches; force empty result
+            sql_query = sql_query.where(Candidate.id == uuid.UUID('00000000-0000-0000-0000-000000000000'))
         
     if parsed_filter.job_id:
         sql_query = sql_query.where(Application.job_id == parsed_filter.job_id)
@@ -124,7 +196,8 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
     # DEBUG LOG 3: Postgres Filtering
     postgres_out = [str(cand.id) for cand, _, _ in rows]
     logger.info("copilot_debug_stage3_postgres_filter", 
-                ids_going_in=[str(x) for x in candidate_ids],
+                qdrant_ids=[str(x) for x in candidate_ids],
+                exact_ids=[str(x) for x in exact_ids],
                 ids_coming_out=postgres_out,
                 job_id_filter=parsed_filter.job_id,
                 exclude_stages_filter=parsed_filter.exclude_stages)
@@ -132,8 +205,13 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
     # Format results
     results = []
     for cand, parsed_data, app in rows:
-        # Python-side filtering for min_experience_years if needed, but for simplicity we return the hit
-        # and let the frontend render it.
+        candidate_skills = parsed_data.skills if parsed_data else []
+        candidate_experience = parsed_data.experience if parsed_data else []
+        
+        # Apply the final validation gate
+        if not validate_candidate_against_filter(candidate_skills, parsed_filter):
+            continue
+            
         results.append({
             "candidate_id": str(cand.id),
             "name": cand.name,
@@ -141,8 +219,8 @@ async def query_copilot(db: AsyncSession, request: CopilotQueryRequest, current_
             "application_id": str(app.id),
             "job_id": str(app.job_id),
             "status": app.status,
-            "skills": parsed_data.skills if parsed_data else [],
-            "experience": parsed_data.experience if parsed_data else []
+            "skills": candidate_skills,
+            "experience": candidate_experience
         })
         
     return CopilotQueryResponse(

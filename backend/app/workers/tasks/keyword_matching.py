@@ -8,7 +8,7 @@ from app.models.recruitment import Job, JobStatus
 from app.models.candidate import Candidate
 from app.models.ai import JobMatch
 
-MATCH_THRESHOLD = 20
+MATCH_THRESHOLD = 35
 
 
 def compute_keyword_match(candidate_skills: list[str], job_requirements: dict) -> dict:
@@ -85,7 +85,9 @@ async def _match_job_to_all_candidates(job_id: str):
 
         rows = []
         for candidate, skills in candidates_data:
+            print(f"[DEBUG MATCH_JOB] Candidate ID: {candidate.id}, Skills passed in: {skills}")
             result = compute_keyword_match(skills, job.requirements)
+            print(f"[DEBUG RESULT] Job ID: {job.id}, match_pct: {result['match_pct']}, matched: {result['matched_skills']}, missing: {result['missing_skills']}")
             has_existing_row = candidate.id in existing_candidate_ids
             if result["match_pct"] >= MATCH_THRESHOLD or has_existing_row:
                 import uuid
@@ -140,7 +142,9 @@ async def _match_candidate_to_all_jobs(candidate_id: str):
 
         rows = []
         for job in jobs:
+            print(f"[DEBUG MATCH_CANDIDATE] Job ID: {job.id}, Skills passed in: {skills}")
             result = compute_keyword_match(skills, job.requirements)
+            print(f"[DEBUG RESULT] Job ID: {job.id}, match_pct: {result['match_pct']}, matched: {result['matched_skills']}, missing: {result['missing_skills']}")
             has_existing_row = job.id in existing_job_ids
             if result["match_pct"] >= MATCH_THRESHOLD or has_existing_row:
                 import uuid

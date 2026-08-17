@@ -82,6 +82,7 @@ async def get_job_matches(
             ),
         )
         .where(JobMatch.job_id == job_id)
+        .where(JobMatch.match_pct >= 35)
         .order_by(JobMatch.match_pct.desc())
     )
     rows = (await db.execute(stmt)).all()

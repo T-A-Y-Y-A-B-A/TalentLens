@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { components } from "@/lib/api/schema";
+import { LocationSelect } from "@/components/LocationSelect";
 
 type JobRead = components["schemas"]["JobRead"];
 
@@ -28,6 +29,7 @@ export default function JobsPage() {
   const [experienceYears, setExperienceYears] = useState("");
   const [education, setEducation] = useState("");
   const [workType, setWorkType] = useState<string>("REMOTE");
+  const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const fetchJobs = async () => {
@@ -64,6 +66,7 @@ export default function JobsPage() {
         body: {
           title,
           description,
+          location: location || null,
           status: "open",
           work_type: workType as any,
           requirements: {
@@ -83,6 +86,7 @@ export default function JobsPage() {
         setRequiredSkills("");
         setExperienceYears("");
         setEducation("");
+        setLocation("");
       }
     } catch (err: any) {
       alert("Error creating job");
@@ -140,16 +144,22 @@ export default function JobsPage() {
                   placeholder="Python, React, TypeScript..." 
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="workType">Work Type</Label>
-                <Select value={workType} onValueChange={(val) => val && setWorkType(val)} required>
-                  <SelectTrigger id="workType"><SelectValue placeholder="Select work type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="REMOTE">Remote</SelectItem>
-                    <SelectItem value="ONSITE">Onsite</SelectItem>
-                    <SelectItem value="HYBRID">Hybrid</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Location</Label>
+                  <LocationSelect value={location} onChange={setLocation} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="workType">Work Type</Label>
+                  <Select value={workType} onValueChange={(val) => val && setWorkType(val)} required>
+                    <SelectTrigger id="workType"><SelectValue placeholder="Select work type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="REMOTE">Remote</SelectItem>
+                      <SelectItem value="ONSITE">Onsite</SelectItem>
+                      <SelectItem value="HYBRID">Hybrid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

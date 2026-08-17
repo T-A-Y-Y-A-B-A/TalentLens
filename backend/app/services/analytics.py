@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from app.models.application import Application, ApplicationStageHistory
 from app.models.recruitment import Job, PipelineStage
 from app.models.candidate import Candidate
-from app.models.ai import AIMatchResult
+from app.models.ai import AIMatchResult, JobMatch
 from app.schemas.analytics import AnalyticsDashboardResponse, TrendDataPoint, DeptDataPoint, SourceDataPoint
 
 async def get_dashboard_analytics(db: AsyncSession, org_id: uuid.UUID) -> AnalyticsDashboardResponse:
@@ -44,13 +44,7 @@ async def get_dashboard_analytics(db: AsyncSession, org_id: uuid.UUID) -> Analyt
     hired_stage_ids = {s.id for s in pipeline_stages if "hire" in s.name.lower() or "offer accepted" in s.name.lower()}
     interviewing_stage_ids = {s.id for s in pipeline_stages if "interview" in s.name.lower()}
     
-    # 4. Fetch AI Matches for the org
-    ai_res = await db.execute(
-        select(AIMatchResult).where(AIMatchResult.org_id == org_id)
-    )
-    ai_matches = ai_res.scalars().all()
-    
-    # 5. Fetch Active Jobs
+    # 4. Fetch Active Jobs
     jobs_res = await db.execute(
         select(Job).where(Job.org_id == org_id, Job.status == "open")
     )
@@ -114,17 +108,6 @@ async def get_dashboard_analytics(db: AsyncSession, org_id: uuid.UUID) -> Analyt
     time_to_hire_days = int(sum(time_to_hire_days_list) / len(time_to_hire_days_list)) if time_to_hire_days_list else 0
     pipeline_conversion_pct = round((total_hired / total_applied * 100), 1) if total_applied > 0 else 0.0
     
-    # AI Match Success
-    high_matches = [m for m in ai_matches if m.match_pct >= 80]
-    high_match_progressed = 0
-    for m in high_matches:
-        # Did this candidate's application for this job reach interviewing or hired?
-        app_hist = [h for h, j in stage_history_with_jobs if h.application.candidate_id == m.candidate_id and h.application.job_id == m.job_id]
-        if any(h.to_stage_id in interviewing_stage_ids or h.to_stage_id in hired_stage_ids for h in app_hist):
-            high_match_progressed += 1
-            
-    ai_match_success_pct = round((high_match_progressed / len(high_matches) * 100), 1) if high_matches else 0.0
-    
     # Format trend data (last 6 months ideally, but simple chronological for MVP)
     pipeline_trend_data = []
     # To keep it simple, just return the months that have data, or a static 6 months ending in current month.
@@ -146,7 +129,6 @@ async def get_dashboard_analytics(db: AsyncSession, org_id: uuid.UUID) -> Analyt
         time_to_hire_trend=0.0, # Placeholder trend
         pipeline_conversion_pct=pipeline_conversion_pct,
         pipeline_conversion_trend=0.0, # Placeholder trend
-        ai_match_success_pct=ai_match_success_pct,
         active_jobs_count=active_jobs_count,
         active_jobs_depts=active_jobs_depts,
         pipeline_trend_data=pipeline_trend_data,

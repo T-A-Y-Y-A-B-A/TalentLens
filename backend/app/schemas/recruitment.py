@@ -61,6 +61,7 @@ class JobRequirements(BaseModel):
 class JobBase(BaseModel):
     title: str
     description: str
+    location: Optional[str] = Field(default=None, min_length=1, max_length=100)
     requirements: JobRequirements = Field(default_factory=JobRequirements)
     work_type: WorkType
     status: JobStatus = JobStatus.DRAFT
@@ -72,6 +73,7 @@ class JobCreate(JobBase):
 class JobUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    location: Optional[str] = Field(default=None, min_length=1, max_length=100)
     requirements: Optional[JobRequirements] = None
     work_type: Optional[WorkType] = None
     status: Optional[JobStatus] = None
