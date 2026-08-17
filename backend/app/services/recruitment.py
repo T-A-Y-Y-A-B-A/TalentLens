@@ -148,7 +148,8 @@ async def create_job(db: AsyncSession, obj_in: JobCreate, current_user: User) ->
     db_obj = Job(
         title=obj_in.title,
         description=obj_in.description,
-        requirements=obj_in.requirements,
+        requirements=obj_in.requirements.model_dump() if hasattr(obj_in.requirements, "model_dump") else obj_in.requirements,
+        work_type=obj_in.work_type,
         status=obj_in.status,
         department_id=obj_in.department_id,
         created_by=current_user.id,
@@ -175,7 +176,12 @@ async def create_job(db: AsyncSession, obj_in: JobCreate, current_user: User) ->
         .options(selectinload(Job.pipeline_stages))
         .where(Job.id == db_obj.id)
     )
-    return result.scalars().first()
+    final_job = result.scalars().first()
+    
+    from app.workers.tasks.keyword_matching import match_job_to_all_candidates
+    match_job_to_all_candidates.delay(str(final_job.id))
+    
+    return final_job
 
 
 async def update_job(db: AsyncSession, job_id: UUID, obj_in: JobUpdate, current_user: User) -> Job:
@@ -214,7 +220,12 @@ async def update_job(db: AsyncSession, job_id: UUID, obj_in: JobUpdate, current_
         .options(selectinload(Job.pipeline_stages))
         .where(Job.id == db_obj.id)
     )
-    return result.scalars().first()
+    final_job = result.scalars().first()
+    
+    from app.workers.tasks.keyword_matching import match_job_to_all_candidates
+    match_job_to_all_candidates.delay(str(final_job.id))
+    
+    return final_job
 
 
 async def delete_job(db: AsyncSession, job_id: UUID, current_user: User):

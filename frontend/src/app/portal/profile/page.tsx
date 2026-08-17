@@ -48,6 +48,18 @@ export default function CandidateProfilePage() {
     }
   };
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (profile?.resume && !profile?.parsed_data) {
+      interval = setInterval(() => {
+        fetchProfile();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [profile?.resume, profile?.parsed_data]);
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -203,9 +215,19 @@ export default function CandidateProfilePage() {
           {!profile?.parsed_data ? (
             <Card className="h-full min-h-[400px] flex items-center justify-center bg-zinc-50/50 border-dashed">
               <div className="text-center p-8 max-w-sm">
-                <FileText className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-zinc-900">No Profile Data Yet</h3>
-                <p className="text-zinc-500 mt-2 text-sm">Upload your resume and our AI will automatically extract your skills and experience.</p>
+                {profile?.resume ? (
+                  <>
+                    <Loader2 className="h-12 w-12 text-indigo-600 animate-spin mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-zinc-900">Analyzing Resume...</h3>
+                    <p className="text-zinc-500 mt-2 text-sm">Our AI is extracting your skills and experience. This usually takes 1-2 minutes.</p>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-zinc-900">No Profile Data Yet</h3>
+                    <p className="text-zinc-500 mt-2 text-sm">Upload your resume and our AI will automatically extract your skills and experience.</p>
+                  </>
+                )}
               </div>
             </Card>
           ) : (

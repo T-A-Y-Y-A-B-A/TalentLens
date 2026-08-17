@@ -86,6 +86,9 @@ app.include_router(interviews_router, prefix=settings.API_V1_STR)
 from app.api.v1.dashboard import router as dashboard_router
 app.include_router(dashboard_router, prefix=settings.API_V1_STR)
 
+from app.api.v1.admin import router as admin_router
+app.include_router(admin_router, prefix=settings.API_V1_STR)
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to TalentLens API"}

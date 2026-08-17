@@ -12,7 +12,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { components } from "@/lib/api/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { JobMatches } from "@/components/JobMatches";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Edit } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 type JobRead = components["schemas"]["JobRead"];
 type StageRead = components["schemas"]["PipelineStageRead"];
@@ -86,6 +89,27 @@ export default function JobPipelineBoard() {
   
   // Dnd state
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Edit Job state
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editRequiredSkills, setEditRequiredSkills] = useState("");
+  const [editExperienceYears, setEditExperienceYears] = useState("");
+  const [editEducation, setEditEducation] = useState("");
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    if (job) {
+      setEditTitle(job.title || "");
+      setEditDescription(job.description || "");
+      const reqs = (job as any).requirements;
+      if (reqs) {
+        setEditRequiredSkills(reqs.required_skills?.join(", ") || "");
+        setEditExperienceYears(reqs.experience_years?.toString() || "");
+        setEditEducation(reqs.education || "");
+      }
+    }
+  }, [job]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -210,6 +234,42 @@ export default function JobPipelineBoard() {
     }
   };
 
+  const handleUpdateJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdating(true);
+    try {
+      const parsedSkills = editRequiredSkills
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+        
+      const parsedExp = editExperienceYears ? parseInt(editExperienceYears, 10) : null;
+
+      const { data, error: updateError } = await apiClient.PATCH("/api/v1/jobs/{job_id}", {
+        params: { path: { job_id: jobId } },
+        body: {
+          title: editTitle,
+          description: editDescription,
+          requirements: {
+            required_skills: parsedSkills,
+            experience_years: parsedExp,
+            education: editEducation || null,
+          }
+        }
+      });
+      if (updateError) {
+        alert("Failed to update job: " + JSON.stringify(updateError));
+      } else if (data) {
+        setJob(data as any);
+        alert("Job updated successfully");
+      }
+    } catch (err: any) {
+      alert("Error updating job");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-10rem)]">
@@ -252,6 +312,9 @@ export default function JobPipelineBoard() {
           <TabsTrigger value="matches" className="flex items-center gap-2">
              <Sparkles size={14} className="text-indigo-500" /> AI Matches
           </TabsTrigger>
+          <TabsTrigger value="edit" className="flex items-center gap-2">
+             <Edit size={14} /> Edit
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="pipeline" className="flex-1 overflow-x-auto m-0 p-0 focus-visible:outline-none">
@@ -274,6 +337,80 @@ export default function JobPipelineBoard() {
 
         <TabsContent value="matches" className="flex-1 overflow-y-auto m-0 p-0 pr-4 focus-visible:outline-none">
           <JobMatches jobId={jobId} />
+        </TabsContent>
+
+        <TabsContent value="edit" className="flex-1 overflow-y-auto m-0 p-0 pr-4 focus-visible:outline-none">
+          <Card className="max-w-3xl border shadow-sm">
+            <CardHeader>
+              <CardTitle>Edit Job Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUpdateJob} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="editTitle">Job Title</Label>
+                  <Input 
+                    id="editTitle" 
+                    value={editTitle} 
+                    onChange={(e) => setEditTitle(e.target.value)} 
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editDescription">Job Description</Label>
+                  <Input 
+                    id="editDescription" 
+                    value={editDescription} 
+                    onChange={(e) => setEditDescription(e.target.value)} 
+                    required 
+                  />
+                </div>
+                
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-sm font-semibold">Requirements</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="editRequiredSkills">Required Skills (comma-separated)</Label>
+                    <Input 
+                      id="editRequiredSkills" 
+                      value={editRequiredSkills} 
+                      onChange={(e) => setEditRequiredSkills(e.target.value)} 
+                      placeholder="Python, React, TypeScript..." 
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editExperienceYears">Experience (Years)</Label>
+                      <Input 
+                        id="editExperienceYears" 
+                        type="number"
+                        min="0"
+                        value={editExperienceYears} 
+                        onChange={(e) => setEditExperienceYears(e.target.value)} 
+                        placeholder="e.g. 3" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editEducation">Education</Label>
+                      <Input 
+                        id="editEducation" 
+                        value={editEducation} 
+                        onChange={(e) => setEditEducation(e.target.value)} 
+                        placeholder="e.g. Bachelor's in CS" 
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="pt-4 flex justify-end">
+                  <Button type="submit" disabled={updating}>
+                    {updating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -204,4 +204,4 @@ Since building frontend before backend, use a mock API layer (fixed JSON fixture
 
 ## 9. Open Item Carried Over
 
-JWT storage: localStorage vs HttpOnly cookie decision (flagged in SECURITY_PLAN.md) must be resolved before wiring real auth — affects how the frontend auth context reads the token. Recommended: HttpOnly, Secure, SameSite=Strict cookie for access token; refresh handled via a Next.js route handler proxying to FastAPI, never exposed to client JS.
+JWT storage: **Deviation from plan.** Originally recommended HttpOnly/Secure/SameSite=Strict for access token; however, the current implementation uses `localStorage` for the access token across all frontend components. This must be remediated or formally accepted as a risk.

@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resend Verification Endpoint */
+        post: operations["resend_verification_endpoint_api_v1_auth_resend_verification_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/password-reset/request": {
         parameters: {
             query?: never;
@@ -797,6 +814,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/candidate-portal/jobs/{job_id}/match-explanation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Match Explanation */
+        get: operations["get_match_explanation_api_v1_candidate_portal_jobs__job_id__match_explanation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/candidate-portal/me/analyze": {
         parameters: {
             query?: never;
@@ -1059,6 +1093,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Platform Stats */
+        get: operations["get_platform_stats_api_v1_admin_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Organizations */
+        get: operations["list_organizations_api_v1_admin_organizations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/audit_logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Audit Logs */
+        get: operations["list_audit_logs_api_v1_admin_audit_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/usage_logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Usage Logs */
+        get: operations["list_usage_logs_api_v1_admin_usage_logs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -1080,6 +1182,86 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminAuditLogOut */
+        AdminAuditLogOut: {
+            /**
+             * Id
+             * Format: uuid4
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Org Name */
+            org_name: string;
+            /** Actor Email */
+            actor_email: string;
+            /** Action */
+            action: string;
+            /** Resource Id */
+            resource_id: string;
+            /** Status */
+            status: string;
+        };
+        /** AdminOrganizationOut */
+        AdminOrganizationOut: {
+            /**
+             * Id
+             * Format: uuid4
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Users Count */
+            users_count: number;
+            /** Active Jobs Count */
+            active_jobs_count: number;
+        };
+        /** AdminPlatformStats */
+        AdminPlatformStats: {
+            /** Total Organizations */
+            total_organizations: number;
+            /** Total Users */
+            total_users: number;
+            /** Total Candidates */
+            total_candidates: number;
+            /** Total Ai Calls */
+            total_ai_calls: number;
+            /** Active Jobs */
+            active_jobs: number;
+        };
+        /** AdminUsageLogOut */
+        AdminUsageLogOut: {
+            /**
+             * Id
+             * Format: uuid4
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Org Name */
+            org_name: string;
+            /** Endpoint */
+            endpoint: string;
+            /** Total Tokens */
+            total_tokens: number;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Candidates Matched */
+            candidates_matched: number;
+        };
         /** AnalyticsDashboardResponse */
         AnalyticsDashboardResponse: {
             /** Time To Hire Days */
@@ -1251,6 +1433,22 @@ export interface components {
              * Format: uuid
              */
             job_id: string;
+            /** Name */
+            name?: string | null;
+            /** Phone */
+            phone: string;
+            /** Education */
+            education: {
+                [key: string]: unknown;
+            }[];
+            /** Certifications */
+            certifications?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Work Experience */
+            work_experience?: {
+                [key: string]: unknown;
+            }[] | null;
         };
         /** CandidateCreate */
         CandidateCreate: {
@@ -1746,10 +1944,8 @@ export interface components {
             title: string;
             /** Description */
             description: string;
-            /** Requirements */
-            requirements?: {
-                [key: string]: unknown;
-            };
+            requirements?: components["schemas"]["JobRequirements"];
+            work_type: components["schemas"]["WorkType"];
             /** @default draft */
             status: components["schemas"]["JobStatus"];
             /** Department Id */
@@ -1761,10 +1957,8 @@ export interface components {
             title: string;
             /** Description */
             description: string;
-            /** Requirements */
-            requirements?: {
-                [key: string]: unknown;
-            };
+            requirements?: components["schemas"]["JobRequirements"];
+            work_type: components["schemas"]["WorkType"];
             /** @default draft */
             status: components["schemas"]["JobStatus"];
             /** Department Id */
@@ -1796,6 +1990,15 @@ export interface components {
             /** Pipeline Stages */
             pipeline_stages?: components["schemas"]["PipelineStageRead"][];
         };
+        /** JobRequirements */
+        JobRequirements: {
+            /** Required Skills */
+            required_skills?: string[];
+            /** Experience Years */
+            experience_years?: number | null;
+            /** Education */
+            education?: string | null;
+        };
         /**
          * JobStatus
          * @enum {string}
@@ -1807,10 +2010,8 @@ export interface components {
             title?: string | null;
             /** Description */
             description?: string | null;
-            /** Requirements */
-            requirements?: {
-                [key: string]: unknown;
-            } | null;
+            requirements?: components["schemas"]["JobRequirements"] | null;
+            work_type?: components["schemas"]["WorkType"] | null;
             status?: components["schemas"]["JobStatus"] | null;
             /** Department Id */
             department_id?: string | null;
@@ -1948,6 +2149,14 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** ResendVerificationRequest */
+        ResendVerificationRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
         };
         /** ResumeParsedDataRead */
         ResumeParsedDataRead: {
@@ -2105,6 +2314,11 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * WorkType
+         * @enum {string}
+         */
+        WorkType: "REMOTE" | "ONSITE" | "HYBRID";
     };
     responses: never;
     parameters: never;
@@ -2270,6 +2484,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["EmailVerify"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_verification_endpoint_api_v1_auth_resend_verification_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendVerificationRequest"];
             };
         };
         responses: {
@@ -3729,11 +3976,42 @@ export interface operations {
     };
     get_candidate_jobs_api_v1_candidate_portal_jobs_get: {
         parameters: {
-            query: {
-                org_id: string;
+            query?: {
+                org_id?: string | null;
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_match_explanation_api_v1_candidate_portal_jobs__job_id__match_explanation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -4294,6 +4572,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardStatsResponse"];
+                };
+            };
+        };
+    };
+    get_platform_stats_api_v1_admin_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlatformStats"];
+                };
+            };
+        };
+    };
+    list_organizations_api_v1_admin_organizations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOrganizationOut"][];
+                };
+            };
+        };
+    };
+    list_audit_logs_api_v1_admin_audit_logs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAuditLogOut"][];
+                };
+            };
+        };
+    };
+    list_usage_logs_api_v1_admin_usage_logs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUsageLogOut"][];
                 };
             };
         };

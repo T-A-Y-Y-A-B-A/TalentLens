@@ -6,15 +6,32 @@ import { Search, ShieldAlert, ArrowDownToLine } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const AUDIT_LOGS = [
-  { id: "al-1", org: "DigitalSofts", actor: "hr@digitalsofts.demo", action: "job.created", resource: "job_id_123", status: "success", timestamp: "2024-05-15 14:32:01" },
-  { id: "al-2", org: "ABC Software", actor: "hr@abc-software.demo", action: "candidate.rejected", resource: "candidate_id_456", status: "success", timestamp: "2024-05-15 14:28:45" },
-  { id: "al-3", org: "System", actor: "system.worker", action: "database.backup", resource: "daily_snapshot", status: "success", timestamp: "2024-05-15 08:00:00" },
-  { id: "al-4", org: "XYZ Bank", actor: "unknown", action: "auth.login.failed", resource: "user_email", status: "failure", timestamp: "2024-05-15 07:12:33" },
-  { id: "al-5", org: "XYZ Bank", actor: "hr@xyz-bank.demo", action: "user.invited", resource: "new_recruiter_email", status: "success", timestamp: "2024-05-14 16:40:22" },
-];
+import { useEffect, useState } from "react";
+import { apiClient } from "@/lib/api/client";
+import { components } from "@/lib/api/schema";
+
+type AdminAuditLogOut = components["schemas"]["AdminAuditLogOut"];
 
 export default function AuditLogsPage() {
+  const [loading, setLoading] = useState(true);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLogOut[]>([]);
+
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        const { data } = await apiClient.GET("/api/v1/admin/audit_logs" as any, {});
+        if (data) {
+          setAuditLogs(data as AdminAuditLogOut[]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch audit logs", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLogs();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -48,17 +65,21 @@ export default function AuditLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {AUDIT_LOGS.map((log) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-zinc-500">Loading audit logs...</TableCell>
+                </TableRow>
+              ) : auditLogs.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell className="text-sm text-zinc-500">{log.timestamp}</TableCell>
-                  <TableCell className="font-medium text-zinc-900">{log.org}</TableCell>
-                  <TableCell className="text-sm text-zinc-600">{log.actor}</TableCell>
+                  <TableCell className="text-sm text-zinc-500">{new Date(log.created_at).toLocaleString()}</TableCell>
+                  <TableCell className="font-medium text-zinc-900">{log.org_name}</TableCell>
+                  <TableCell className="text-sm text-zinc-600">{log.actor_email}</TableCell>
                   <TableCell>
                     <span className="font-mono text-xs bg-zinc-100 text-zinc-800 px-2 py-1 rounded">
                       {log.action}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-zinc-500 truncate max-w-[150px]">{log.resource}</TableCell>
+                  <TableCell className="text-sm text-zinc-500 truncate max-w-[150px]">{log.resource_id}</TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                       log.status === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'

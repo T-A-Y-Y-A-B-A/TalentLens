@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, field_validator
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 import os
 import aiofiles
@@ -43,6 +43,25 @@ class CandidateLogin(BaseModel):
 
 class CandidateApply(BaseModel):
     job_id: UUID
+    name: Optional[str] = None
+    phone: str
+    education: List[Dict[str, Any]]
+    certifications: Optional[List[Dict[str, Any]]] = None
+    work_experience: Optional[List[Dict[str, Any]]] = None
+
+    @field_validator("education")
+    @classmethod
+    def education_not_empty(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError("At least one education entry is required")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def phone_not_blank(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Phone number is required")
+        return v
 
 class CandidateProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -112,6 +131,12 @@ async def apply_to_job(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
         
+    # Check if candidate has a resume
+    from app.models.candidate import Resume
+    resume_exists = await db.execute(select(Resume).where(Resume.candidate_id == current_candidate.id))
+    if not resume_exists.scalars().first():
+        raise HTTPException(status_code=400, detail="Resume is required to apply")
+
     # Check if already applied
     existing_result = await db.execute(
         select(Application)
@@ -139,6 +164,23 @@ async def apply_to_job(
         applied_at=datetime.now(timezone.utc).isoformat()
     )
     db.add(app_obj)
+    
+    # Update candidate profile data
+    if payload.name:
+        current_candidate.name = payload.name
+    if payload.phone:
+        current_candidate.phone = payload.phone
+        
+    profile_data = dict(current_candidate.profile) if current_candidate.profile else {}
+    if payload.education is not None:
+        profile_data["education"] = payload.education
+    if payload.certifications is not None:
+        profile_data["certifications"] = payload.certifications
+    if payload.work_experience is not None:
+        profile_data["work_experience"] = payload.work_experience
+        
+    current_candidate.profile = profile_data
+    
     await db.commit()
     await db.refresh(app_obj)
     
@@ -214,10 +256,17 @@ async def update_candidate_profile(
 
 @router.post("/resume", response_model=ResumeRead, status_code=202)
 async def upload_candidate_resume(
+    request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_candidate: Candidate = Depends(get_current_candidate)
 ):
+    MAX_SIZE = 5 * 1024 * 1024
+    # Check header first for fast-fail
+    content_length = request.headers.get('content-length')
+    if content_length and int(content_length) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="Payload Too Large: File size exceeds the 5MB limit.")
+        
     from app.core.storage import get_s3_client, ensure_bucket_exists
     import uuid
     import io
@@ -228,7 +277,19 @@ async def upload_candidate_resume(
     file_ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"
     safe_filename = f"{uuid.uuid4()}{file_ext}"
     
-    content = await file.read()
+    # Read in chunks to enforce hard cap against spoofed headers
+    size = 0
+    content_buffer = bytearray()
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        size += len(chunk)
+        if size > MAX_SIZE:
+            raise HTTPException(status_code=413, detail="Payload Too Large: File size exceeds the 5MB limit.")
+        content_buffer.extend(chunk)
+        
+    content = bytes(content_buffer)
     s3 = get_s3_client()
     s3.upload_fileobj(io.BytesIO(content), bucket_name, safe_filename)
         
@@ -325,51 +386,119 @@ async def get_candidate_organizations(
 
 @router.get("/jobs")
 async def get_candidate_jobs(
-    org_id: UUID,
+    org_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
     current_candidate: Candidate = Depends(get_current_candidate)
 ):
     from app.models.recruitment import JobStatus, Job
-    from app.models.ai import AIMatchResult
+    from app.models.ai import JobMatch
+    from app.models.candidate import Resume, ResumeParsedData
     from sqlalchemy.orm import joinedload
-    from sqlalchemy import func
     
-    # Verify org exists
-    org_res = await db.execute(select(Organization).where(Organization.id == org_id))
-    if not org_res.scalars().first():
-        raise HTTPException(status_code=404, detail="Organization not found")
+    # Check if candidate has skills (resume parsed)
+    skills_res = await db.execute(
+        select(ResumeParsedData.skills)
+        .join(Resume, ResumeParsedData.resume_id == Resume.id)
+        .where(Resume.candidate_id == current_candidate.id)
+        .order_by(Resume.created_at.desc())
+    )
+    skills = skills_res.scalars().first()
+    
+    if not skills:
+        return {
+            "status": "resume_required",
+            "message": "Upload your resume first to see matched jobs.",
+            "jobs": []
+        }
+
+    # Verify org exists if org_id is provided
+    if org_id:
+        org_res = await db.execute(select(Organization).where(Organization.id == org_id))
+        if not org_res.scalars().first():
+            raise HTTPException(status_code=404, detail="Organization not found")
         
-    query = (
-        select(Job, AIMatchResult)
+    from sqlalchemy import and_, func
+    stmt = (
+        select(Job, JobMatch.match_pct, JobMatch.matched_skills, JobMatch.missing_skills, Organization.name.label("organization_name"))
         .options(joinedload(Job.department))
-        .outerjoin(AIMatchResult, (AIMatchResult.job_id == Job.id) & (AIMatchResult.candidate_id == current_candidate.id))
-        .where(Job.org_id == org_id)
+        .join(Organization, Organization.id == Job.org_id)
+        .outerjoin(
+            JobMatch,
+            and_(JobMatch.job_id == Job.id, JobMatch.candidate_id == current_candidate.id)
+        )
         .where(Job.status == JobStatus.OPEN)
         .where(Job.deleted_at.is_(None))
-        .order_by(func.coalesce(AIMatchResult.match_pct, -1).desc(), Job.created_at.desc())
+        .order_by(func.coalesce(JobMatch.match_pct, 0).desc(), Job.created_at.desc())
     )
     
-    result = await db.execute(query)
+    if org_id:
+        stmt = stmt.where(Job.org_id == org_id)
+        
+    result = await db.execute(stmt)
+    rows = result.all()
     
-    response = []
-    for job, ai_match in result.all():
+    jobs_response = []
+    for job, pct, matched, missing, org_name in rows:
+        required_skills = (job.requirements or {}).get("required_skills", []) if isinstance(job.requirements, dict) else getattr(job.requirements, "required_skills", [])
+        
         job_dict = {
             "id": job.id,
             "title": job.title,
             "description": job.description,
-            "department": job.department,
+            "requirements": job.requirements,
+            "department": {"name": job.department.name} if job.department else None,
+            "organization_name": org_name,
+            "work_type": job.work_type,
             "created_at": job.created_at,
             "org_id": job.org_id,
+            "match_pct": pct if pct is not None else 0,
+            "matched_skills": matched if matched is not None else [],
+            "missing_skills": missing if missing is not None else required_skills,
         }
-        if ai_match:
-            job_dict["match_pct"] = ai_match.match_pct
-            job_dict["ats_score"] = ai_match.ats_score
-            job_dict["strengths"] = ai_match.strengths
-            job_dict["weaknesses"] = ai_match.weaknesses
-            job_dict["missing_skills"] = ai_match.missing_skills
-        response.append(job_dict)
+        jobs_response.append(job_dict)
         
-    return response
+    return {
+        "status": "ok",
+        "jobs": jobs_response
+    }
+
+@router.get("/jobs/{job_id}/match-explanation")
+async def get_match_explanation(
+    job_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    from app.models.ai import JobMatch
+    from app.models.recruitment import Job
+    from sqlalchemy.orm import joinedload
+    
+    result = await db.execute(
+        select(JobMatch)
+        .options(joinedload(JobMatch.job))
+        .where(JobMatch.job_id == job_id)
+        .where(JobMatch.candidate_id == current_candidate.id)
+    )
+    job_match = result.scalars().first()
+    
+    if not job_match:
+        raise HTTPException(status_code=404, detail="No match found")
+        
+    # Cache Invalidation: if explanation exists AND it was generated after the last update to the match row
+    if job_match.ai_explanation and job_match.ai_explanation_generated_at:
+        # We need to account for timezone aware vs naive
+        # SQLAlchemy stores them as naive UTC in this app (datetime.utcnow)
+        if job_match.ai_explanation_generated_at >= job_match.updated_at:
+            return {"explanation": job_match.ai_explanation, "cached": True}
+            
+    from app.workers.tasks.match_explanation import generate_match_explanation
+    
+    explanation = await generate_match_explanation(job_match, job_match.job)
+    
+    job_match.ai_explanation = explanation
+    job_match.ai_explanation_generated_at = datetime.utcnow()
+    await db.commit()
+    
+    return {"explanation": explanation, "cached": False}
 
 class AnalyzeRequest(BaseModel):
     org_id: UUID

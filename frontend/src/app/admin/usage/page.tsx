@@ -6,15 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Activity, Download, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-const USAGE_LOGS = [
-  { id: "log-1", org: "DigitalSofts", feature: "Resume Parsing", model: "gpt-4-turbo", tokens: 1450, cost: 0.0145, timestamp: "2024-05-15 14:32:01" },
-  { id: "log-2", org: "ABC Software", feature: "Copilot Search", model: "gpt-3.5-turbo", tokens: 820, cost: 0.0016, timestamp: "2024-05-15 14:28:45" },
-  { id: "log-3", org: "DigitalSofts", feature: "Candidate Matching", model: "text-embedding-3", tokens: 250, cost: 0.0001, timestamp: "2024-05-15 14:20:12" },
-  { id: "log-4", org: "XYZ Bank", feature: "Resume Parsing", model: "gpt-4-turbo", tokens: 1680, cost: 0.0168, timestamp: "2024-05-15 13:55:09" },
-  { id: "log-5", org: "ABC Software", feature: "Candidate Matching", model: "text-embedding-3", tokens: 190, cost: 0.0001, timestamp: "2024-05-15 13:40:22" },
-];
+import { useEffect, useState } from "react";
+import { apiClient } from "@/lib/api/client";
+import { components } from "@/lib/api/schema";
+
+type AdminUsageLogOut = components["schemas"]["AdminUsageLogOut"];
 
 export default function UsageLogsPage() {
+  const [loading, setLoading] = useState(true);
+  const [usageLogs, setUsageLogs] = useState<AdminUsageLogOut[]>([]);
+
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        const { data } = await apiClient.GET("/api/v1/admin/usage_logs" as any, {});
+        if (data) {
+          setUsageLogs(data as AdminUsageLogOut[]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch usage logs", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLogs();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -48,18 +65,22 @@ export default function UsageLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {USAGE_LOGS.map((log) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-zinc-500">Loading AI usage logs...</TableCell>
+                </TableRow>
+              ) : usageLogs.map((log) => (
                 <TableRow key={log.id}>
-                  <TableCell className="text-sm text-zinc-500">{log.timestamp}</TableCell>
-                  <TableCell className="font-medium text-zinc-900">{log.org}</TableCell>
+                  <TableCell className="text-sm text-zinc-500">{new Date(log.created_at).toLocaleString()}</TableCell>
+                  <TableCell className="font-medium text-zinc-900">{log.org_name}</TableCell>
                   <TableCell>
                     <span className="inline-flex items-center rounded-full bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700">
-                      {log.feature}
+                      {log.endpoint}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm text-zinc-600 font-mono">{log.model}</TableCell>
-                  <TableCell className="text-right text-sm text-zinc-900">{log.tokens.toLocaleString()}</TableCell>
-                  <TableCell className="text-right text-sm font-medium text-zinc-900">${log.cost.toFixed(4)}</TableCell>
+                  <TableCell className="text-sm text-zinc-600 font-mono">Any</TableCell>
+                  <TableCell className="text-right text-sm text-zinc-900">{log.total_tokens.toLocaleString()}</TableCell>
+                  <TableCell className="text-right text-sm font-medium text-zinc-900">N/A</TableCell>
                 </TableRow>
               ))}
             </TableBody>

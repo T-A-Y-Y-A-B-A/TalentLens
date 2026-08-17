@@ -3,13 +3,42 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Users, FileText, Activity } from "lucide-react";
 
+import { useEffect, useState } from "react";
+import { apiClient } from "@/lib/api/client";
+import { components } from "@/lib/api/schema";
+
+type AdminPlatformStats = components["schemas"]["AdminPlatformStats"];
+
 export default function AdminOverviewPage() {
-  const stats = [
-    { title: "Organizations", value: "3", icon: Building2, trend: "Active" },
-    { title: "Total Users", value: "142", icon: Users, trend: "+12 this month" },
-    { title: "Candidates", value: "3,892", icon: FileText, trend: "+450 this month" },
-    { title: "AI API Calls", value: "124.5k", icon: Activity, trend: "+18% vs last month" },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [platformStats, setPlatformStats] = useState<AdminPlatformStats | null>(null);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const { data, error } = await apiClient.GET("/api/v1/admin/stats" as any, {});
+        if (data) {
+          setPlatformStats(data as AdminPlatformStats);
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin stats", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchStats();
+  }, []);
+
+  const stats = platformStats ? [
+    { title: "Organizations", value: platformStats.total_organizations.toString(), icon: Building2, trend: "Active" },
+    { title: "Total Users", value: platformStats.total_users.toString(), icon: Users, trend: "Active" },
+    { title: "Candidates", value: platformStats.total_candidates.toString(), icon: FileText, trend: "Active" },
+    { title: "AI API Calls", value: platformStats.total_ai_calls.toString(), icon: Activity, trend: "Recorded" },
+  ] : [];
+
+  if (loading) {
+    return <div className="p-8 text-center text-zinc-500">Loading system metrics...</div>;
+  }
 
   return (
     <div className="space-y-8">

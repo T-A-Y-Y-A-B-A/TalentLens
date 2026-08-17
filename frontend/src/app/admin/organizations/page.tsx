@@ -6,13 +6,32 @@ import { Button } from "@/components/ui/button";
 import { Building2, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-const ORGANIZATIONS = [
-  { id: "1", name: "DigitalSofts", slug: "digitalsofts", plan: "enterprise", users: 45, jobs: 12, created_at: "2023-10-01" },
-  { id: "2", name: "ABC Software", slug: "abc-software", plan: "pro", users: 18, jobs: 4, created_at: "2023-11-15" },
-  { id: "3", name: "XYZ Bank", slug: "xyz-bank", plan: "enterprise", users: 79, jobs: 28, created_at: "2024-01-20" },
-];
+import { useEffect, useState } from "react";
+import { apiClient } from "@/lib/api/client";
+import { components } from "@/lib/api/schema";
+
+type AdminOrganizationOut = components["schemas"]["AdminOrganizationOut"];
 
 export default function OrganizationsPage() {
+  const [loading, setLoading] = useState(true);
+  const [organizations, setOrganizations] = useState<AdminOrganizationOut[]>([]);
+
+  useEffect(() => {
+    async function fetchOrganizations() {
+      try {
+        const { data } = await apiClient.GET("/api/v1/admin/organizations" as any, {});
+        if (data) {
+          setOrganizations(data as AdminOrganizationOut[]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch organizations", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchOrganizations();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -51,20 +70,22 @@ export default function OrganizationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ORGANIZATIONS.map((org) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-zinc-500">Loading organizations...</TableCell>
+                </TableRow>
+              ) : organizations.map((org) => (
                 <TableRow key={org.id}>
                   <TableCell className="font-medium text-zinc-900">{org.name}</TableCell>
                   <TableCell className="text-zinc-500">{org.slug}</TableCell>
                   <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                      org.plan === 'enterprise' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'
-                    }`}>
-                      {org.plan}
+                    <span className="px-2 py-1 rounded-full text-xs font-medium capitalize bg-purple-50 text-purple-700">
+                      Enterprise
                     </span>
                   </TableCell>
-                  <TableCell className="text-right">{org.users}</TableCell>
-                  <TableCell className="text-right">{org.jobs}</TableCell>
-                  <TableCell className="text-right text-zinc-500">{org.created_at}</TableCell>
+                  <TableCell className="text-right">{org.users_count}</TableCell>
+                  <TableCell className="text-right">{org.active_jobs_count}</TableCell>
+                  <TableCell className="text-right text-zinc-500">{new Date(org.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
                       Manage

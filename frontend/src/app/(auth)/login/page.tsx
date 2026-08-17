@@ -26,12 +26,16 @@ export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showResendButton, setShowResendButton] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const { login } = useAuth();
 
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -50,6 +54,7 @@ export default function LoginPage() {
           setApiError('Invalid email or password');
         } else if (response.status === 403) {
           setApiError('Email not verified. Please check your inbox.');
+          setShowResendButton(true);
         } else {
           setApiError('An unexpected error occurred. Please try again.');
         }
@@ -80,6 +85,32 @@ export default function LoginPage() {
     }
   };
 
+  const handleResend = async () => {
+    const email = getValues('email');
+    if (!email) return;
+    
+    setIsResending(true);
+    setApiError(null);
+    try {
+      const response = await fetch('/api/v1/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (response.ok) {
+        setResendSuccess(true);
+        setShowResendButton(false);
+      } else {
+        setApiError('Failed to resend verification email. Please try again later.');
+      }
+    } catch (err) {
+      setApiError('Failed to connect to the server. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="mb-8">
@@ -87,11 +118,38 @@ export default function LoginPage() {
         <p className="text-zinc-500 mt-2">Welcome back. Enter your details to continue.</p>
       </div>
 
+      {resendSuccess && (
+        <Alert className="mb-6 bg-green-50 text-green-700 border-green-200">
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>Verification email sent! Please check your inbox.</AlertDescription>
+        </Alert>
+      )}
+
       {apiError && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{apiError}</AlertDescription>
+          <AlertDescription>
+            {apiError}
+            {showResendButton && (
+              <div className="mt-3">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleResend}
+                  disabled={isResending}
+                  className="bg-white text-zinc-900 border-red-200 hover:bg-red-50"
+                >
+                  {isResending ? (
+                    <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Sending...</>
+                  ) : (
+                    'Send email again'
+                  )}
+                </Button>
+              </div>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 

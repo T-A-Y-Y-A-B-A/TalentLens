@@ -10,8 +10,14 @@ class JobStatus(str, enum.Enum):
     OPEN = "open"
     CLOSED = "closed"
 
+class WorkType(str, enum.Enum):
+    REMOTE = "REMOTE"
+    ONSITE = "ONSITE"
+    HYBRID = "HYBRID"
+
 class Department(Base, TimestampMixin, TenantMixin):
     __tablename__ = "departments"
+
     
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
@@ -26,6 +32,7 @@ class Job(Base, TimestampMixin, TenantMixin):
     title = Column(String, nullable=False)
     description = Column(String, nullable=False)
     requirements = Column(JSONType(), default={})
+    work_type = Column(Enum(WorkType), nullable=False)
     status = Column(Enum(JobStatus), default=JobStatus.DRAFT, nullable=False)
     created_by = Column(GUID(), ForeignKey("users.id"), nullable=True)
     

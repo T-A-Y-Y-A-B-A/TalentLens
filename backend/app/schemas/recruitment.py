@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
-from app.models.recruitment import JobStatus
+from app.models.recruitment import JobStatus, WorkType
 
 # --- Department Schemas ---
 
@@ -53,10 +53,16 @@ class PipelineStageRead(PipelineStageBase):
 
 # --- Job Schemas ---
 
+class JobRequirements(BaseModel):
+    required_skills: List[str] = Field(default_factory=list)
+    experience_years: Optional[int] = None
+    education: Optional[str] = None
+
 class JobBase(BaseModel):
     title: str
     description: str
-    requirements: Dict[str, Any] = Field(default_factory=dict)
+    requirements: JobRequirements = Field(default_factory=JobRequirements)
+    work_type: WorkType
     status: JobStatus = JobStatus.DRAFT
     department_id: Optional[UUID] = None
 
@@ -66,7 +72,8 @@ class JobCreate(JobBase):
 class JobUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    requirements: Optional[Dict[str, Any]] = None
+    requirements: Optional[JobRequirements] = None
+    work_type: Optional[WorkType] = None
     status: Optional[JobStatus] = None
     department_id: Optional[UUID] = None
     

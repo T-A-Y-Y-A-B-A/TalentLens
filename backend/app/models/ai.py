@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Float, Boolean
+from sqlalchemy import Column, String, DateTime, ForeignKey, Float, Boolean, Integer, UniqueConstraint, func
 from sqlalchemy.orm import relationship
 from app.models.base import Base, GUID, JSONType
 
@@ -12,17 +12,17 @@ class AIMatchResult(Base):
     job_id = Column(GUID(), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
     candidate_id = Column(GUID(), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False)
     
-    match_pct = Column(Float, nullable=False)
-    ats_score = Column(Float, nullable=True)
-    missing_skills = Column(JSONType, nullable=False, default=list)
+    ats_score = Column(Float, nullable=True) # deterministic keyword match score
     strengths = Column(JSONType, nullable=False, default=list)
     weaknesses = Column(JSONType, nullable=False, default=list)
     recommendation = Column(String, nullable=False)
     interview_questions = Column(JSONType, nullable=False, default=list)
 
     prompt_version = Column(String, nullable=False)
-    cache_key = Column(String, nullable=False, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    __table_args__ = (UniqueConstraint("job_id", "candidate_id", name="uq_ai_match_result"),)
     
     # Relationships
     organization = relationship("Organization")
@@ -53,3 +53,19 @@ class AIUsageLog(Base):
     
     organization = relationship("Organization")
     user = relationship("User")
+
+class JobMatch(Base):
+    __tablename__ = "job_matches"
+
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    job_id = Column(GUID(), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    candidate_id = Column(GUID(), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    match_pct = Column(Integer, nullable=False)
+    matched_skills = Column(JSONType, nullable=False, default=list)
+    missing_skills = Column(JSONType, nullable=False, default=list)
+    ai_explanation = Column(String, nullable=True)
+    ai_explanation_generated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (UniqueConstraint("job_id", "candidate_id", name="uq_job_candidate_match"),)

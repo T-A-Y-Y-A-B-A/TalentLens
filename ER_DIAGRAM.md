@@ -51,6 +51,17 @@ erDiagram
         TIMESTAMP used_at
     }
 
+    INVITE {
+        UUID id PK
+        UUID org_id FK
+        STRING email
+        STRING role
+        STRING token_hash
+        UUID invited_by FK
+        STRING status
+        TIMESTAMP expires_at
+    }
+
     DEPARTMENT {
         UUID id PK
         UUID org_id FK
@@ -236,4 +247,7 @@ erDiagram
     USER ||--o{ APPLICATION_STAGE_HISTORY : "moves (moved_by)"
     USER ||--o{ INTERVIEW : "conducts (interviewer_id)"
     USER ||--o{ JOB : "creates (created_by)"
+    
+    ORGANIZATION ||--o{ INVITE : "has"
+    USER ||--o{ INVITE : "invites (invited_by)"
 ```

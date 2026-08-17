@@ -90,9 +90,6 @@ services:
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-password123}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-key-change-in-production}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/v1/auth/google/callback}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     ports:
       - "8000:8000"
@@ -105,6 +102,12 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')\" || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - talentlens_net
 
@@ -135,6 +138,14 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "celery -A app.workers.celery_app inspect ping || exit 1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
     networks:
       - talentlens_net
 
@@ -154,22 +165,14 @@ services:
       # NEXT_PUBLIC_API_URL is intentionally empty so browser fetches use relative /api/v1/... paths
       - NEXT_PUBLIC_API_URL=
     depends_on:
-      - backend
-    networks:
-      - talentlens_net
-
-  traefik:
-    image: traefik:v2.10
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-    ports:
-      - "80:80"
-      - "8080:8080"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\"" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - talentlens_net
 

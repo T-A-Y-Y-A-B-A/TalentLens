@@ -14,13 +14,13 @@ def _send_email(to_email: str, subject: str, body: str):
     msg = EmailMessage()
     msg.set_content(body)
     msg['Subject'] = subject
-    msg['From'] = "noreply@talentlens.local"
+    msg['From'] = settings.SMTP_USER
     msg['To'] = to_email
 
-    # Connect to local Mailpit (assuming it's on localhost:1025)
-    # In production, this would be configured via env vars
     try:
-        with smtplib.SMTP("localhost", 1025) as server:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.send_message(msg)
     except Exception as e:
         print(f"Failed to send email to {to_email}: {e}")

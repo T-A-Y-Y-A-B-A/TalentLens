@@ -155,6 +155,8 @@ async def async_parse_resume(resume_id: str):
             from app.services.candidate_visibility import sync_candidate_qdrant_orgs
             await sync_candidate_qdrant_orgs(db, resume.candidate_id)
 
+            from app.workers.tasks.keyword_matching import match_candidate_to_all_jobs
+            match_candidate_to_all_jobs.delay(str(resume.candidate_id))
             
         except Exception as e:
             logger.error("parse_resume_failed", resume_id=resume_id, error=str(e))

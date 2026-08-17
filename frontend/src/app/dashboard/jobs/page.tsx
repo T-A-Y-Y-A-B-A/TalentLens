@@ -24,6 +24,10 @@ export default function JobsPage() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [requiredSkills, setRequiredSkills] = useState("");
+  const [experienceYears, setExperienceYears] = useState("");
+  const [education, setEducation] = useState("");
+  const [workType, setWorkType] = useState<string>("REMOTE");
   const [submitting, setSubmitting] = useState(false);
 
   const fetchJobs = async () => {
@@ -49,11 +53,24 @@ export default function JobsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const parsedSkills = requiredSkills
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+        
+      const parsedExp = experienceYears ? parseInt(experienceYears, 10) : null;
+
       const { data, error: createError } = await apiClient.POST("/api/v1/jobs", {
         body: {
           title,
           description,
           status: "open",
+          work_type: workType as any,
+          requirements: {
+            required_skills: parsedSkills,
+            experience_years: parsedExp,
+            education: education || null,
+          }
         }
       });
       if (createError) {
@@ -63,6 +80,9 @@ export default function JobsPage() {
         setOpen(false);
         setTitle("");
         setDescription("");
+        setRequiredSkills("");
+        setExperienceYears("");
+        setEducation("");
       }
     } catch (err: any) {
       alert("Error creating job");
@@ -110,6 +130,48 @@ export default function JobsPage() {
                   placeholder="Brief overview of the role..." 
                   required 
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="requiredSkills">Required Skills (comma-separated)</Label>
+                <Input 
+                  id="requiredSkills" 
+                  value={requiredSkills} 
+                  onChange={(e) => setRequiredSkills(e.target.value)} 
+                  placeholder="Python, React, TypeScript..." 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="workType">Work Type</Label>
+                <Select value={workType} onValueChange={(val) => val && setWorkType(val)} required>
+                  <SelectTrigger id="workType"><SelectValue placeholder="Select work type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="REMOTE">Remote</SelectItem>
+                    <SelectItem value="ONSITE">Onsite</SelectItem>
+                    <SelectItem value="HYBRID">Hybrid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="experienceYears">Experience (Years)</Label>
+                  <Input 
+                    id="experienceYears" 
+                    type="number"
+                    min="0"
+                    value={experienceYears} 
+                    onChange={(e) => setExperienceYears(e.target.value)} 
+                    placeholder="e.g. 3" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="education">Education</Label>
+                  <Input 
+                    id="education" 
+                    value={education} 
+                    onChange={(e) => setEducation(e.target.value)} 
+                    placeholder="e.g. Bachelor's in CS" 
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

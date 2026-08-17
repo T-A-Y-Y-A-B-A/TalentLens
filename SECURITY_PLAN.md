@@ -9,7 +9,7 @@ Security is worth 10 rubric marks directly, but it also underpins Backend (20) a
 | Control | Implementation |
 |---|---|
 | Password storage | bcrypt via Passlib, cost factor 12. Never log or return password fields, even hashed. |
-| Access tokens | JWT, short-lived (15 min), signed with a rotated secret (python-jose), contain `sub`, `org_id`, `role`, `is_platform_admin`, `exp`, `jti`. |
+| Access tokens | JWT, short-lived (15 min), signed with a rotated secret (python-jose), contain `sub`, `org_id`, `role`, `is_platform_admin`, `exp`, `jti`. **Note (Deviation):** Currently stored in `localStorage` instead of `HttpOnly` cookies. |
 | Refresh tokens | Opaque random token, stored hashed in `refresh_tokens` table, long-lived (7–14 days), rotated on every use (old one revoked when a new one is issued — detects token replay). |
 | Token revocation | Revoked/rotated refresh tokens tracked in DB; access-token `jti` blacklist in Redis for immediate logout/revocation without waiting for expiry. |
 | Google OAuth | `authlib`, verify `id_token` signature and `aud` claim server-side, never trust client-supplied profile data without re-verification. |

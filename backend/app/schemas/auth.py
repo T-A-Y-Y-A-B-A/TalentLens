@@ -33,6 +33,9 @@ class PasswordResetConfirm(BaseModel):
 class EmailVerify(BaseModel):
     token: str
 
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
 class UserProfile(BaseModel):
     id: UUID
     email: str

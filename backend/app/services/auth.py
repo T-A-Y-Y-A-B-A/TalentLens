@@ -161,6 +161,33 @@ async def verify_email(db: AsyncSession, token: str):
     await db.execute(update(User).where(User.id == ev.user_id).values(is_verified=True))
     await db.commit()
 
+async def resend_verification_email(db: AsyncSession, email: str):
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        return # Do not leak existence
+    
+    if user.is_verified:
+        return # Already verified
+        
+    raw_token = secrets.token_urlsafe(32)
+    expire_time = (datetime.utcnow() + timedelta(days=1)).isoformat()
+    
+    verification = EmailVerification(
+        user_id=user.id,
+        token_hash=_hash_token(raw_token),
+        expires_at=expire_time
+    )
+    db.add(verification)
+    await db.commit()
+    
+    try:
+        print(f"\n[DEV MODE] Verification token for {email}: {raw_token}\n")
+        send_verification_email.delay(email, raw_token)
+    except Exception:
+        pass  # Non-fatal
+
 async def request_password_reset(db: AsyncSession, email: str):
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()

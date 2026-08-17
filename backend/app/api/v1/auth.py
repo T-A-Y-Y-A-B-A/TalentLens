@@ -11,12 +11,13 @@ from app.core.rate_limit import limiter
 from app.models.identity import User
 from app.schemas.auth import (
     UserRegister, UserLogin, Token, 
-    PasswordResetRequest, PasswordResetConfirm, EmailVerify, UserProfile
+    PasswordResetRequest, PasswordResetConfirm, EmailVerify, UserProfile,
+    ResendVerificationRequest
 )
 from app.services.auth import (
     register_user, authenticate_user, create_tokens, refresh_token_rotation,
     logout_user, verify_email, request_password_reset, confirm_password_reset,
-    register_oauth_user
+    register_oauth_user, resend_verification_email
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -89,6 +90,12 @@ async def logout(request: Request, response: Response, db: AsyncSession = Depend
 @router.post("/verify-email")
 async def verify_email_endpoint(payload: EmailVerify, db: AsyncSession = Depends(get_db)):
     await verify_email(db, payload.token)
+    return {"success": True}
+
+@router.post("/resend-verification")
+@limiter.limit("3/minute")
+async def resend_verification_endpoint(request: Request, payload: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
+    await resend_verification_email(db, payload.email)
     return {"success": True}
 
 @router.post("/password-reset/request")

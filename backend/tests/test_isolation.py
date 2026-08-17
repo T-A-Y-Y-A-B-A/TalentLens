@@ -18,7 +18,7 @@ async def test_org_isolation(async_client: AsyncClient, db_session: AsyncSession
         "/api/v1/auth/register",
         json={"email": email_a, "password": "Password123", "org_name": org_a_name}
     )
-    assert resp_a.status_code == 200
+    assert resp_a.status_code == 201
     user_a = resp_a.json()
 
     # ---------------------------------------------------------------
@@ -30,7 +30,7 @@ async def test_org_isolation(async_client: AsyncClient, db_session: AsyncSession
         "/api/v1/auth/register",
         json={"email": email_b, "password": "Password123", "org_name": org_b_name}
     )
-    assert resp_b.status_code == 200
+    assert resp_b.status_code == 201
     user_b = resp_b.json()
 
     # ---------------------------------------------------------------
@@ -96,7 +96,7 @@ async def test_org_isolation(async_client: AsyncClient, db_session: AsyncSession
             "org_name": f"Org C {uuid.uuid4().hex[:6]}"
         }
     )
-    assert resp_c.status_code == 200
+    assert resp_c.status_code == 201
     user_c = resp_c.json()
 
     # Move user C into Org A with recruiter role
@@ -162,3 +162,13 @@ async def test_org_isolation(async_client: AsyncClient, db_session: AsyncSession
         headers={"Authorization": f"Bearer {token_a}"}
     )
     assert patch_own_role.status_code == 400
+
+    # ---------------------------------------------------------------
+    # 13. Org B user → PATCH Org A user role → 404
+    # ---------------------------------------------------------------
+    patch_role_cross_tenant = await async_client.patch(
+        f"/api/v1/organizations/{org_a_id}/users/{user_c['id']}/role",
+        json={"role": "hr_manager"},
+        headers={"Authorization": f"Bearer {token_b}"}
+    )
+    assert patch_role_cross_tenant.status_code == 404

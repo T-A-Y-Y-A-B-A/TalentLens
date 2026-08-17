@@ -56,6 +56,8 @@ class JSONType(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return value
+        if hasattr(value, "model_dump"):  # Pydantic BaseModel
+            value = value.model_dump(mode="json")
         if dialect.name == "postgresql":
             return value  # psycopg2 handles dict → JSONB natively
         return json.dumps(value)
