@@ -20,7 +20,7 @@ The system is pre-seeded with isolated demo organizations. You can log in using 
 - **Email:** `hr@xyz-bank.demo` | **Password:** `password123`
 
 **Super Admin (Cross-Org Analytics & Audit Logs)**
-- **Email:** `admin@talentlens.demo` | **Password:** `password123`
+
 
 *Candidates can register their own accounts via the open Candidate Portal.*
 
