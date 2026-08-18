@@ -11,8 +11,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, User, Video, Plus, MessageSquarePlus, Loader2, RefreshCw } from "lucide-react";
+import { Calendar, Clock, User, Video, Plus, MessageSquarePlus, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -321,6 +331,12 @@ export default function InterviewsPage() {
   // Track which interviews already have feedback (loaded lazily)
   const [feedbackMap, setFeedbackMap] = useState<Record<string, InterviewFeedback>>({});
 
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const canDelete = checkRole(["hr_manager", "recruiter"]);
+
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   useEffect(() => {
@@ -379,6 +395,29 @@ export default function InterviewsPage() {
   const handleFeedbackSaved = (fb: InterviewFeedback) => {
     setFeedbackMap((prev) => ({ ...prev, [fb.interview_id]: fb }));
     setFeedbackModal((prev) => ({ ...prev, existingFeedback: fb }));
+  };
+
+  const handleDeleteInterview = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`/api/v1/interviews/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setInterviews((prev: any[]) => prev.filter((i) => i.id !== deleteTarget.id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err?.detail ?? "Failed to cancel interview");
+      }
+    } catch {
+      alert("Error cancelling interview");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
   };
 
   const canSchedule = checkRole(["hr_manager", "recruiter"]);
@@ -479,6 +518,19 @@ export default function InterviewsPage() {
                         </Button>
                       )}
 
+                      {/* Delete button — recruiter/hr_manager only, only for scheduled interviews */}
+                      {canDelete && interview.status === "scheduled" && (
+                        <Button
+                          id={`delete-interview-${interview.id}`}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => setDeleteTarget(interview)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+
                       <Link 
                         href={`/dashboard/interviews/${interview.id}`}
                         className="inline-flex items-center justify-center rounded-md font-medium h-7 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
@@ -513,6 +565,32 @@ export default function InterviewsPage() {
           onSaved={handleFeedbackSaved}
         />
       )}
+
+      {/* Delete Interview Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Interview</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancel the interview with <span className="font-semibold">{deleteTarget?.candidate_name}</span> for{" "}
+              <span className="font-semibold">{deleteTarget?.job_title}</span>?{" "}
+              The candidate and interviewer will be notified. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Keep Interview</AlertDialogCancel>
+            <AlertDialogAction
+              id="confirm-cancel-interview-btn"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteInterview}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Cancel Interview
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

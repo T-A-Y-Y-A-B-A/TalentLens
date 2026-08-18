@@ -1,15 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { apiClient } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Briefcase } from "lucide-react";
+import { Loader2, Plus, Briefcase, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { components } from "@/lib/api/schema";
 import { LocationSelect } from "@/components/LocationSelect";
@@ -17,6 +28,7 @@ import { LocationSelect } from "@/components/LocationSelect";
 type JobRead = components["schemas"]["JobRead"];
 
 export default function JobsPage() {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<JobRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +43,12 @@ export default function JobsPage() {
   const [workType, setWorkType] = useState<string>("REMOTE");
   const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<JobRead | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const canDelete = user?.role === "hr_manager" || user?.role === "super_admin";
 
   const fetchJobs = async () => {
     try {
@@ -91,6 +109,29 @@ export default function JobsPage() {
       alert("Error creating job");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`/api/v1/jobs/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setJobs((prev) => prev.filter((j) => j.id !== deleteTarget.id));
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err?.detail ?? "Failed to delete job");
+      }
+    } catch {
+      alert("Error deleting job");
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -246,10 +287,23 @@ export default function JobsPage() {
                           {job.status}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Link href={`/dashboard/jobs/${job.id}`}>
-                          <Button variant="ghost" size="sm">View Pipeline</Button>
-                        </Link>
+                    <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={`/dashboard/jobs/${job.id}`}>
+                            <Button variant="ghost" size="sm">View Pipeline</Button>
+                          </Link>
+                          {canDelete && (
+                            <Button
+                              id={`delete-job-${job.id}`}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => setDeleteTarget(job)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -259,6 +313,32 @@ export default function JobsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Job Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Job Posting</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-semibold">{deleteTarget?.title}</span>?
+              This will soft-delete the job and it will no longer appear in the pipeline.
+              This action cannot be undone via the UI.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              id="confirm-delete-job-btn"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteJob}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Job
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

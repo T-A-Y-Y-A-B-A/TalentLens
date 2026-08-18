@@ -5,7 +5,17 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { apiClient } from "@/lib/api/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, UploadCloud, FileText, CheckCircle, GraduationCap, Briefcase, Award } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, UploadCloud, FileText, CheckCircle, GraduationCap, Briefcase, Award, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type ParsedData = {
@@ -31,6 +41,10 @@ export default function CandidateProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete account state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -118,6 +132,31 @@ export default function CandidateProfilePage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch("/api/v1/candidate-portal/me", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        // Clear all local state and do a hard redirect so no stale session data remains
+        localStorage.removeItem("access_token");
+        window.location.href = "/portal/login";
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error("Delete Failed", { description: err?.detail ?? "Could not delete account." });
+        setDeleteOpen(false);
+      }
+    } catch {
+      toast.error("Delete Failed", { description: "An error occurred. Please try again." });
+      setDeleteOpen(false);
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -334,6 +373,60 @@ export default function CandidateProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Danger Zone — Delete Account */}
+      <Card className="border-red-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-red-700 flex items-center gap-2 text-base">
+            <Trash2 className="h-4 w-4" />
+            Danger Zone
+          </CardTitle>
+          <CardDescription className="text-red-600/80">
+            Permanently delete your account and all associated data. This cannot be undone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            id="delete-account-btn"
+            variant="outline"
+            className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete My Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete Account Confirmation Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={(open) => !open && !deletingAccount && setDeleteOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-700">Delete Your Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will <strong>permanently soft-delete</strong> your account and withdraw all your active
+              job applications. You will be immediately logged out.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2 text-sm text-zinc-600">
+            <p className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-amber-800 font-medium">
+              ⚠ You will not be able to recover your account or applications after this action.
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAccount}>Keep My Account</AlertDialogCancel>
+            <AlertDialogAction
+              id="confirm-delete-account-btn"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+            >
+              {deletingAccount && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Yes, Delete My Account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
