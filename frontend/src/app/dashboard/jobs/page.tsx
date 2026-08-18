@@ -66,7 +66,6 @@ export default function JobsPage() {
         body: {
           title,
           description,
-          location: location || null,
           status: "open",
           work_type: workType as any,
           requirements: {
