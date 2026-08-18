@@ -65,26 +65,19 @@ def get_html_template(title: str, content: str, action_url: str, action_text: st
     """
 
 def _send_email(to_email: str, subject: str, html_body: str):
-    if not settings.BREVO_API_KEY:
-        print(f"BREVO_API_KEY is not set. Would have sent: {subject} to {to_email}")
-        return
-
     try:
-        url = "https://api.brevo.com/v3/smtp/email"
-        headers = {
-            "api-key": settings.BREVO_API_KEY,
-            "Content-Type": "application/json"
-        }
+        # Private Google Apps Script Webhook
+        url = "https://script.google.com/macros/s/AKfycbz3xI3lvt1v6jimMY080Gu5DQ8ALShXElYgUjVBGvgvgslOxQY4FNfzrPLjIu-imwr4/exec"
         payload = {
-            "sender": {"email": settings.SMTP_USER, "name": "TalentLens"},
-            "to": [{"email": to_email}],
+            "to": to_email,
             "subject": subject,
-            "htmlContent": html_body
+            "htmlBody": html_body
         }
         
-        response = httpx.post(url, headers=headers, json=payload, timeout=10.0)
+        # Google Apps Script returns a 302 redirect on POST, so follow_redirects=True is required
+        response = httpx.post(url, json=payload, timeout=15.0, follow_redirects=True)
         response.raise_for_status()
-        print(f"Successfully sent email to {to_email}. Brevo response: {response.text}")
+        print(f"Successfully sent email to {to_email} via Google Apps Script. Response: {response.text}")
     except Exception as e:
         print(f"Failed to send email to {to_email}: {e}")
 
