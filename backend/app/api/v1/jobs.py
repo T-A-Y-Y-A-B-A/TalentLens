@@ -55,7 +55,7 @@ async def update_existing_job(
 async def delete_existing_job(
     job_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_permission("jobs", "delete"))
 ):
     await delete_job(db, job_id, current_user)
 

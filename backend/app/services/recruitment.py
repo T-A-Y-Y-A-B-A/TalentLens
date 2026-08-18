@@ -229,7 +229,7 @@ async def update_job(db: AsyncSession, job_id: UUID, obj_in: JobUpdate, current_
 
 
 async def delete_job(db: AsyncSession, job_id: UUID, current_user: User):
-    enforce_role(current_user.role.value, "jobs", "manage")
+    enforce_role(current_user.role.value, "jobs", "delete")
     
     result = await db.execute(
         select(Job)

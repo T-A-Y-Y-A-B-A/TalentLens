@@ -7,11 +7,15 @@ p, hr_manager, departments, manage
 p, hr_manager, jobs, manage
 p, hr_manager, candidates, manage
 p, hr_manager, applications, manage
+p, hr_manager, applications, reject
 p, hr_manager, invites, manage
 p, hr_manager, interviews, manage
 p, hr_manager, interviews, read
+p, hr_manager, interviews, delete
 p, hr_manager, analytics, read
 p, hr_manager, copilot, use
+p, hr_manager, jobs, delete
+p, hr_manager, org_members, delete
 
 p, recruiter, jobs, read
 p, recruiter, jobs, create
@@ -19,9 +23,11 @@ p, recruiter, jobs, update
 p, recruiter, candidates, read
 p, recruiter, candidates, manage
 p, recruiter, applications, manage
+p, recruiter, applications, reject
 p, recruiter, interviews, manage
 p, recruiter, interviews, read
 p, recruiter, interviews, update
+p, recruiter, interviews, delete
 p, recruiter, organization, read
 p, recruiter, analytics, read
 p, recruiter, copilot, use
@@ -29,5 +35,13 @@ p, recruiter, copilot, use
 p, interviewer, interviews, read
 p, interviewer, interviews, update
 p, interviewer, candidates, read
+
+# Candidate and super_admin actions are enforced at the service layer,
+# not via Casbin (candidates use a separate auth dependency;
+# super_admin/is_platform_admin bypasses Casbin via the model matcher).
+# These entries are for documentation / future policy tooling only.
+# p, candidate, own_account, delete
+# p, candidate, own_application, withdraw
+# p, super_admin, organization, delete
 
 g, hr_manager, recruiter

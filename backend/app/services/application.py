@@ -149,3 +149,78 @@ async def move_application_stage(db: AsyncSession, application_id: UUID, move_da
     await db.refresh(application)
     
     return application
+
+
+TERMINAL_STATUSES = frozenset({"withdrawn", "rejected", "hired"})
+
+
+async def withdraw_application(
+    db: AsyncSession,
+    application_id: UUID,
+    actor_candidate_id: UUID,
+) -> None:
+    """
+    Allow a candidate to withdraw their own application.
+
+    Ownership check returns 404 (not 403) so the existence of the application
+    is not revealed to someone who does not own it.
+    Returns 409 if the application is already in a terminal status.
+    """
+    result = await db.execute(
+        select(Application)
+        .where(Application.id == application_id)
+        .where(Application.deleted_at.is_(None))
+    )
+    application = result.scalars().first()
+
+    # Return 404 regardless of whether the app exists or belongs to another candidate
+    if not application or application.candidate_id != actor_candidate_id:
+        raise DomainException("application_not_found", "Application not found", status_code=404)
+
+    if application.status in TERMINAL_STATUSES:
+        raise DomainException(
+            "application_already_finalized",
+            f"Application is already {application.status} and cannot be withdrawn.",
+            status_code=409,
+        )
+
+    application.status = "withdrawn"
+    await db.commit()
+
+
+async def reject_application(
+    db: AsyncSession,
+    application_id: UUID,
+    org_id: UUID,
+    actor_role: str,
+) -> None:
+    """
+    Allow a recruiter or hr_manager to reject an application.
+
+    Org-scoped: fetches application joined to Job to validate Job.org_id == org_id.
+    Returns 404 for cross-org or missing applications.
+    Returns 409 if already in a terminal status.
+    """
+    enforce_role(actor_role, "applications", "reject")
+
+    result = await db.execute(
+        select(Application)
+        .join(Job, Application.job_id == Job.id)
+        .where(Application.id == application_id)
+        .where(Job.org_id == org_id)
+        .where(Application.deleted_at.is_(None))
+        .where(Job.deleted_at.is_(None))
+    )
+    application = result.scalars().first()
+    if not application:
+        raise DomainException("application_not_found", "Application not found", status_code=404)
+
+    if application.status in TERMINAL_STATUSES:
+        raise DomainException(
+            "application_already_finalized",
+            f"Application is already {application.status} and cannot be rejected.",
+            status_code=409,
+        )
+
+    application.status = "rejected"
+    await db.commit()

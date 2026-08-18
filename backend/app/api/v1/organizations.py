@@ -1,6 +1,6 @@
 from typing import List
 import uuid
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -8,7 +8,7 @@ from app.core.dependencies import get_current_user
 from app.models.identity import User
 from app.schemas.organization import (
     OrganizationRead, OrganizationUpdate, OrganizationCreate,
-    UserListItem, UserRoleUpdate
+    UserListItem, UserRoleUpdate, OrgDeleteConfirm
 )
 from app.services import organization as org_service
 
@@ -78,4 +78,51 @@ async def change_user_role(
     meta = _get_request_meta(request)
     return await org_service.change_user_role(
         db, id, user_id, data.role, current_user, **meta
+    )
+
+@router.delete("/{id}/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_org_member(
+    id: uuid.UUID,
+    user_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Soft-delete a user from the organization.
+    Only hr_manager can perform this action.
+    Returns 404 for cross-org attempts (never 403 — prevents resource enumeration).
+    Returns 400 if attempting self-removal or removing the last admin/hr_manager.
+    """
+    meta = _get_request_meta(request)
+    await org_service.delete_org_member(
+        db=db,
+        org_id=id,
+        target_user_id=user_id,
+        actor_user=current_user,
+        **meta
+    )
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_organization(
+    id: uuid.UUID,
+    body: OrgDeleteConfirm,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Cascade soft-delete an entire organization.
+    Restricted to is_platform_admin users only.
+    Requires confirm_name in the request body to match the org's name exactly (server-side guard).
+    Soft-deletes: org, all jobs, all users, all interviews.
+    Sets all non-terminal applications to 'withdrawn'.
+    """
+    meta = _get_request_meta(request)
+    await org_service.delete_organization(
+        db=db,
+        org_id=id,
+        actor_user=current_user,
+        confirm_name=body.confirm_name,
+        **meta
     )

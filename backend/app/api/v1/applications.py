@@ -1,16 +1,20 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
 from uuid import UUID
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_candidate
 from app.models.identity import User
+from app.models.candidate import Candidate
 from app.models.application import Application
 from app.models.ai import AIMatchResult
 from app.schemas.application import ApplicationCreate, ApplicationRead, ApplicationWithDetailsRead, ApplicationStageMove
-from app.services.application import create_application, get_applications, get_application, move_application_stage
+from app.services.application import (
+    create_application, get_applications, get_application, move_application_stage,
+    withdraw_application, reject_application,
+)
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -91,3 +95,31 @@ async def get_application_match_result(
         "interview_questions": match.interview_questions
     }
 
+
+@router.post("/{application_id}/withdraw", status_code=status.HTTP_204_NO_CONTENT)
+async def withdraw_application_api(
+    application_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    """
+    Candidate withdraws their own application.
+    Returns 404 if the application doesn't exist or belongs to another candidate
+    (ownership is never revealed via 403).
+    Returns 409 if the application is already in a terminal status.
+    """
+    await withdraw_application(db, application_id, current_candidate.id)
+
+
+@router.post("/{application_id}/reject", status_code=status.HTTP_204_NO_CONTENT)
+async def reject_application_api(
+    application_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Recruiter or HR manager rejects an application.
+    Returns 403 for wrong roles, 404 for cross-org or missing applications,
+    409 if already in a terminal status.
+    """
+    await reject_application(db, application_id, current_user.org_id, current_user.role.value)

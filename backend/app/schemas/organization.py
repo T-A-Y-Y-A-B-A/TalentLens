@@ -37,3 +37,9 @@ class UserListItem(BaseModel):
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True, extra="forbid")
+
+class OrgDeleteConfirm(BaseModel):
+    """Request body for org cascade-delete. confirm_name must exactly match org.name."""
+    confirm_name: str
+
+    model_config = ConfigDict(extra="forbid")

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Dict, Any
@@ -625,3 +625,48 @@ async def google_auth(request: Request, code: str, state: str, db: AsyncSession 
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=401, detail=f"Google authentication failed: {str(e)}")
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_own_candidate_account(
+    db: AsyncSession = Depends(get_db),
+    current_candidate: Candidate = Depends(get_current_candidate)
+):
+    """
+    Candidate soft-deletes their own account.
+
+    - Sets Candidate.deleted_at = now().
+    - Cascades: all non-terminal Applications (not withdrawn/rejected/hired)
+      are set to status='withdrawn'.
+    - Both mutations are committed in one transaction.
+
+    After a 204 the frontend MUST clear the JWT and redirect to /portal/login.
+    The token is now invalid because the candidate is soft-deleted; any subsequent
+    request using the old token will fail with 401 (get_current_candidate checks
+    the Candidate row exists and is not soft-deleted).
+    """
+    from datetime import datetime, timezone
+
+    result = await db.execute(
+        select(Candidate)
+        .where(Candidate.id == current_candidate.id)
+        .where(Candidate.deleted_at.is_(None))
+    )
+    candidate = result.scalars().first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    now = datetime.now(timezone.utc)
+    candidate.deleted_at = now
+
+    # Cascade: withdraw all non-terminal applications
+    terminal_statuses = ("withdrawn", "rejected", "hired")
+    await db.execute(
+        update(Application)
+        .where(Application.candidate_id == current_candidate.id)
+        .where(Application.status.notin_(terminal_statuses))
+        .values(status="withdrawn")
+    )
+
+    # Single commit covers both candidate soft-delete and application cascade
+    await db.commit()

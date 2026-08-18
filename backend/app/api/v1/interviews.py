@@ -15,6 +15,7 @@ from app.models.candidate import Candidate
 from app.schemas.interview import InterviewCreate, InterviewUpdate, InterviewRead, InterviewDetailRead
 
 from app.workers.tasks.interview_email import send_interview_invite_email, send_interview_update_email, send_interview_cancel_email
+from app.services.interview_service import delete_interview as svc_delete_interview
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
 
@@ -146,6 +147,7 @@ async def list_interviews(
             joinedload(Interview.feedback)
         )
         .where(Job.org_id == current_user.org_id)
+        .where(Interview.deleted_at.is_(None))
         .order_by(Interview.scheduled_at)
     )
     
@@ -316,9 +318,15 @@ async def update_interview(
 async def cancel_interview(
     interview_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_permission("interviews", "manage"))
+    current_user: User = Depends(require_permission("interviews", "delete"))
 ):
-    res = await db.execute(
+    """
+    Soft-delete an interview (sets deleted_at=now() and status='cancelled').
+    RBAC: recruiter or hr_manager only.
+    Returns 404 for cross-org interviews — never 403.
+    """
+    # Load interview before deletion so we can send the cancel email
+    pre_res = await db.execute(
         select(Interview)
         .join(Application, Interview.application_id == Application.id)
         .join(Job, Application.job_id == Job.id)
@@ -326,18 +334,26 @@ async def cancel_interview(
             joinedload(Interview.application).joinedload(Application.candidate),
             joinedload(Interview.application).joinedload(Application.job)
         )
-        .where(Interview.id == interview_id, Job.org_id == current_user.org_id)
+        .where(Interview.id == interview_id)
+        .where(Job.org_id == current_user.org_id)
+        .where(Interview.deleted_at.is_(None))
     )
-    interview = res.scalars().first()
+    interview = pre_res.scalars().first()
     if not interview:
         raise HTTPException(status_code=404, detail="Interview not found")
-        
-    interview.status = "cancelled"
-    await db.commit()
-    
+
+    # Delegate to service (enforces RBAC + performs soft-delete)
+    await svc_delete_interview(
+        db=db,
+        interview_id=interview_id,
+        org_id=current_user.org_id,
+        actor_role=current_user.role.value,
+    )
+
+    # Send cancel email (non-blocking, fail-safe; runs after commit in service)
     u_res = await db.execute(select(User).where(User.id == interview.interviewer_id))
     u = u_res.scalars().first()
-    
+
     try:
         send_interview_cancel_email.delay(
             str(interview.id),

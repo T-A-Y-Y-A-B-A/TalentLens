@@ -62,7 +62,11 @@ async def get_current_candidate(
     if payload.get("role") != "candidate":
         raise credentials_exception
         
-    result = await db.execute(select(Candidate).where(Candidate.id == candidate_id))
+    result = await db.execute(
+        select(Candidate)
+        .where(Candidate.id == candidate_id)
+        .where(Candidate.deleted_at.is_(None))
+    )
     candidate = result.scalars().first()
     if candidate is None:
         raise credentials_exception
