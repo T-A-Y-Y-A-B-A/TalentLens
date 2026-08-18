@@ -2,9 +2,10 @@ import asyncio
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models as qdrant_models
 import sys
+from app.core.config import settings
 
 async def check():
-    client = AsyncQdrantClient(host="qdrant", port=6333)
+    client = AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
     candidate_id = "002b4736-fec2-4ea8-8060-75f36077fe31"
     
     # We filter by candidate_id in the payload

@@ -4,13 +4,13 @@ from app.core.config import settings
 
 class _QdrantProxy:
     def __getattr__(self, name):
-        client = AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+        client = AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
         return getattr(client, name)
 
 qdrant_client = _QdrantProxy()
 
 async def init_qdrant():
-    client = AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+    client = AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
     collections = await client.get_collections()
     collection_names = [c.name for c in collections.collections]
     
