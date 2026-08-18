@@ -88,6 +88,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-admin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-password123}
+      - MINIO_SECURE=false
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-key-change-in-production}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
@@ -115,7 +116,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "pip install 'pypdf' && celery -A app.workers.celery_app worker --loglevel=info"
+    command: sh -c "pip install 'pypdf' && celery -A app.workers.celery_app worker --loglevel=info --concurrency=1"
     volumes:
       - ./backend:/app
     env_file:
@@ -133,6 +134,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-admin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-password123}
+      - MINIO_SECURE=false
     depends_on:
       redis:
         condition: service_healthy

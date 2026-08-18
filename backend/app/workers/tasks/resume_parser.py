@@ -21,9 +21,15 @@ logger = structlog.get_logger()
 async def async_parse_resume(resume_id: str):
     logger.info("start_parse_resume", resume_id=resume_id)
     
-    async with AsyncSessionLocal() as db:
-        from sqlalchemy import select
-        result = await db.execute(select(Resume).where(Resume.id == resume_id))
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.pool import NullPool
+    engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
+    async_session = async_sessionmaker(engine_local, expire_on_commit=False)
+    
+    try:
+        async with async_session() as db:
+            from sqlalchemy import select
+            result = await db.execute(select(Resume).where(Resume.id == resume_id))
         resume = result.scalars().first()
         
         if not resume:
@@ -163,18 +169,15 @@ async def async_parse_resume(resume_id: str):
             resume.parse_status = ParseStatus.FAILED
             await db.commit()
             raise
+    finally:
+        await engine_local.dispose()
 
 @celery_app.task(name="tasks.parse_resume")
 def parse_resume(resume_id: str):
     """
     Celery task entrypoint. Runs the async parse workflow in a new event loop.
     """
-    from app.core.database import engine
-    
     async def wrapper():
-        try:
-            await async_parse_resume(resume_id)
-        finally:
-            await engine.dispose()
+        await async_parse_resume(resume_id)
             
     asyncio.run(wrapper())

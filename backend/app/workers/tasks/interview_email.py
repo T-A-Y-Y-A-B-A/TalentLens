@@ -79,16 +79,25 @@ def send_interview_invite_email(
         from app.models.support import Notification
         
         async def _insert_notification():
-            async with AsyncSessionLocal() as db:
-                notif = Notification(
-                    recipient_type="candidate",
-                    recipient_id=candidate_id,
-                    type="interview_invite",
-                    channel="email",
-                    payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
-                )
-                db.add(notif)
-                await db.commit()
+            from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+            from sqlalchemy.pool import NullPool
+            from app.core.config import settings
+            engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
+            async_session = async_sessionmaker(engine_local, expire_on_commit=False)
+            
+            try:
+                async with async_session() as db:
+                    notif = Notification(
+                        recipient_type="candidate",
+                        recipient_id=candidate_id,
+                        type="interview_invite",
+                        channel="email",
+                        payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
+                    )
+                    db.add(notif)
+                    await db.commit()
+            finally:
+                await engine_local.dispose()
             
         asyncio.run(_insert_notification())
 
@@ -135,16 +144,25 @@ def send_interview_update_email(
         from app.models.support import Notification
         
         async def _insert_notification():
-            async with AsyncSessionLocal() as db:
-                notif = Notification(
-                    recipient_type="candidate",
-                    recipient_id=candidate_id,
-                    type="interview_update",
-                    channel="email",
-                    payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
-                )
-                db.add(notif)
-                await db.commit()
+            from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+            from sqlalchemy.pool import NullPool
+            from app.core.config import settings
+            engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
+            async_session = async_sessionmaker(engine_local, expire_on_commit=False)
+            
+            try:
+                async with async_session() as db:
+                    notif = Notification(
+                        recipient_type="candidate",
+                        recipient_id=candidate_id,
+                        type="interview_update",
+                        channel="email",
+                        payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
+                    )
+                    db.add(notif)
+                    await db.commit()
+            finally:
+                await engine_local.dispose()
             
         asyncio.run(_insert_notification())
 
@@ -181,15 +199,24 @@ def send_interview_cancel_email(
         from app.models.support import Notification
         
         async def _insert_notification():
-            async with AsyncSessionLocal() as db:
-                notif = Notification(
-                    recipient_type="candidate",
-                    recipient_id=candidate_id,
-                    type="interview_cancel",
-                    channel="email",
-                    payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
-                )
-                db.add(notif)
-                await db.commit()
+            from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+            from sqlalchemy.pool import NullPool
+            from app.core.config import settings
+            engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
+            async_session = async_sessionmaker(engine_local, expire_on_commit=False)
+            
+            try:
+                async with async_session() as db:
+                    notif = Notification(
+                        recipient_type="candidate",
+                        recipient_id=candidate_id,
+                        type="interview_cancel",
+                        channel="email",
+                        payload={"interview_id": interview_id, "job_title": job_title, "scheduled_at": scheduled_at}
+                    )
+                    db.add(notif)
+                    await db.commit()
+            finally:
+                await engine_local.dispose()
             
         asyncio.run(_insert_notification())

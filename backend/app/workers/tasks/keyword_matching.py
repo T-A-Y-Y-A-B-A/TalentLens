@@ -61,8 +61,15 @@ def match_job_to_all_candidates(job_id: str):
 
 async def _match_job_to_all_candidates(job_id: str):
     from app.models.candidate import Resume, ResumeParsedData
-    async with AsyncSessionLocal() as session:
-        job = await session.get(Job, UUID(job_id))
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.pool import NullPool
+    from app.core.config import settings
+    engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
+    async_session = async_sessionmaker(engine_local, expire_on_commit=False)
+    
+    try:
+        async with async_session() as session:
+            job = await session.get(Job, UUID(job_id))
         if not job:
             return
         
@@ -103,6 +110,8 @@ async def _match_job_to_all_candidates(job_id: str):
             if key not in unique_rows or row["match_pct"] > unique_rows[key]["match_pct"]:
                 unique_rows[key] = row
         await bulk_upsert_job_matches(session, list(unique_rows.values()))
+    finally:
+        await engine_local.dispose()
 
 
 @celery_app.task(name="match_candidate_to_all_jobs")
@@ -113,8 +122,15 @@ def match_candidate_to_all_jobs(candidate_id: str):
 
 async def _match_candidate_to_all_jobs(candidate_id: str):
     from app.models.candidate import Resume, ResumeParsedData
-    async with AsyncSessionLocal() as session:
-        candidate_data = (await session.execute(
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.pool import NullPool
+    from app.core.config import settings
+    engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
+    async_session = async_sessionmaker(engine_local, expire_on_commit=False)
+    
+    try:
+        async with async_session() as session:
+            candidate_data = (await session.execute(
             select(Candidate, ResumeParsedData.skills)
             .join(Resume, Resume.candidate_id == Candidate.id)
             .join(ResumeParsedData, ResumeParsedData.resume_id == Resume.id)
@@ -160,3 +176,5 @@ async def _match_candidate_to_all_jobs(candidate_id: str):
             if key not in unique_rows or row["match_pct"] > unique_rows[key]["match_pct"]:
                 unique_rows[key] = row
         await bulk_upsert_job_matches(session, list(unique_rows.values()))
+    finally:
+        await engine_local.dispose()

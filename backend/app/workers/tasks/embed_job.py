@@ -16,9 +16,16 @@ logger = structlog.get_logger()
 async def async_embed_job(job_id: str):
     logger.info("start_embed_job", job_id=job_id)
     
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Job).where(Job.id == job_id))
-        job = result.scalars().first()
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.pool import NullPool
+    from app.core.config import settings
+    engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
+    async_session = async_sessionmaker(engine_local, expire_on_commit=False)
+    
+    try:
+        async with async_session() as db:
+            result = await db.execute(select(Job).where(Job.id == job_id))
+            job = result.scalars().first()
         
         if not job:
             logger.error("job_not_found", job_id=job_id)
@@ -79,18 +86,15 @@ async def async_embed_job(job_id: str):
         except Exception as e:
             logger.error("embed_job_failed", job_id=job_id, error=str(e))
             await db.rollback()
+    finally:
+        await engine_local.dispose()
 
 @celery_app.task(name="tasks.embed_job")
 def embed_job(job_id: str):
     """
     Celery task entrypoint. Runs the async job embedding workflow in a new event loop.
     """
-    from app.core.database import engine
-    
     async def wrapper():
-        try:
-            await async_embed_job(job_id)
-        finally:
-            await engine.dispose()
+        await async_embed_job(job_id)
             
     asyncio.run(wrapper())
