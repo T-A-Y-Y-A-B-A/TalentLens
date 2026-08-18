@@ -61,18 +61,31 @@ async def download_resume_api(
     current_user: User = Depends(get_current_user)
 ):
     from app.services.candidate import get_resume_by_id
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, StreamingResponse
     import os
     
     resume = await get_resume_by_id(db, candidate_id, resume_id, current_user)
     
-    # Resolves to absolute path based on CWD where the app runs
-    file_path = os.path.abspath(resume.file_url)
-    if not os.path.exists(file_path):
-        from app.core.exceptions import DomainException
-        raise DomainException("file_not_found", "The physical resume file was not found.", status_code=404)
-        
-    return FileResponse(file_path, filename=os.path.basename(file_path))
+    if resume.file_url.startswith("s3://"):
+        from app.core.storage import get_s3_client
+        bucket_name, object_name = resume.file_url.replace("s3://", "").split("/", 1)
+        s3 = get_s3_client()
+        try:
+            obj = s3.get_object(Bucket=bucket_name, Key=object_name)
+            return StreamingResponse(
+                obj["Body"].iter_chunks(),
+                media_type=obj.get("ContentType", "application/pdf"),
+                headers={"Content-Disposition": f'inline; filename="{object_name}"'}
+            )
+        except Exception as e:
+            from app.core.exceptions import DomainException
+            raise DomainException("file_not_found", "File not found in storage", status_code=404)
+    else:
+        file_path = os.path.abspath(resume.file_url)
+        if not os.path.exists(file_path):
+            from app.core.exceptions import DomainException
+            raise DomainException("file_not_found", "The physical resume file was not found.", status_code=404)
+        return FileResponse(file_path, filename=os.path.basename(file_path))
 
 @router.get("/{candidate_id}/resume/{resume_id}/parsed")
 async def get_parsed_data_api(

@@ -201,15 +201,27 @@ export default function CandidateDetailPage() {
                   <CheckCircle className="mr-1 h-4 w-4" />
                   Resume Uploaded
                 </span>
-                <a 
-                  href={(candidate as any).resume.file_url.replace("s3://", "http://localhost:9000/")} 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const token = localStorage.getItem("access_token");
+                    const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/candidates/${candidateId}/resume/${(candidate as any).resume.id}/download`;
+                    fetch(downloadUrl, { headers: { "Authorization": `Bearer ${token}` } })
+                      .then(async res => {
+                        if (!res.ok) throw new Error("Failed to download");
+                        const blob = await res.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        window.open(url, "_blank");
+                        setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+                      })
+                      .catch(() => alert("Failed to download resume"));
+                  }}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground text-zinc-900 h-9 px-4 py-2"
+                  variant="outline"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Resume
-                </a>
+                </Button>
               </div>
             )}
 

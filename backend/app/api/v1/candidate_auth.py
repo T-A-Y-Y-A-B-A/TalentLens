@@ -265,66 +265,63 @@ async def upload_candidate_resume(
     db: AsyncSession = Depends(get_db),
     current_candidate: Candidate = Depends(get_current_candidate)
 ):
-    try:
-        MAX_SIZE = 5 * 1024 * 1024
-        # Check header first for fast-fail
-        content_length = request.headers.get('content-length')
-        if content_length and int(content_length) > MAX_SIZE:
+    MAX_SIZE = 5 * 1024 * 1024
+    # Check header first for fast-fail
+    content_length = request.headers.get('content-length')
+    if content_length and int(content_length) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="Payload Too Large: File size exceeds the 5MB limit.")
+        
+    from app.core.storage import get_s3_client, ensure_bucket_exists
+    import uuid
+    import io
+
+    bucket_name = "resumes"
+    ensure_bucket_exists(bucket_name)
+    
+    file_ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"
+    safe_filename = f"{uuid.uuid4()}{file_ext}"
+    
+    # Read in chunks to enforce hard cap against spoofed headers
+    size = 0
+    content_buffer = bytearray()
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        size += len(chunk)
+        if size > MAX_SIZE:
             raise HTTPException(status_code=413, detail="Payload Too Large: File size exceeds the 5MB limit.")
-            
-        from app.core.storage import get_s3_client, ensure_bucket_exists
-        import uuid
-        import io
+        content_buffer.extend(chunk)
+        
+    content = bytes(content_buffer)
+    s3 = get_s3_client()
+    s3.upload_fileobj(io.BytesIO(content), bucket_name, safe_filename)
+        
+    # We store the s3:// bucket URI style in the db
+    file_url = f"s3://{bucket_name}/{safe_filename}"
+        
+    db_obj = Resume(
+        candidate_id=current_candidate.id,
+        file_url=file_url,
+        parse_status=ParseStatus.PENDING
+    )
+    db.add(db_obj)
+    await db.commit()
+    await db.refresh(db_obj)
+    
+    from app.workers.tasks.resume_parser import parse_resume
+    parse_resume.delay(str(db_obj.id))
+    
+    return db_obj
 
-        bucket_name = "resumes"
-        ensure_bucket_exists(bucket_name)
-        
-        file_ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"
-        safe_filename = f"{uuid.uuid4()}{file_ext}"
-        
-        # Read in chunks to enforce hard cap against spoofed headers
-        size = 0
-        content_buffer = bytearray()
-        while True:
-            chunk = await file.read(1024 * 1024)
-            if not chunk:
-                break
-            size += len(chunk)
-            if size > MAX_SIZE:
-                raise HTTPException(status_code=413, detail="Payload Too Large: File size exceeds the 5MB limit.")
-            content_buffer.extend(chunk)
-            
-        content = bytes(content_buffer)
-        s3 = get_s3_client()
-        s3.upload_fileobj(io.BytesIO(content), bucket_name, safe_filename)
-            
-        # We store the s3:// bucket URI style in the db
-        file_url = f"s3://{bucket_name}/{safe_filename}"
-            
-        db_obj = Resume(
-            candidate_id=current_candidate.id,
-            file_url=file_url,
-            parse_status=ParseStatus.PENDING
-        )
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        
-        from app.workers.tasks.resume_parser import parse_resume
-        parse_resume.delay(str(db_obj.id))
-        
-        return db_obj
-    except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
-        raise HTTPException(status_code=400, detail=f"Upload Failed: {str(e)}\n\nTraceback:\n{error_trace}")
-
-@router.get("/resume/url")
-async def get_resume_presigned_url(
+@router.get("/resume/download")
+async def download_candidate_resume(
     db: AsyncSession = Depends(get_db),
     current_candidate: Candidate = Depends(get_current_candidate)
 ):
     from app.core.storage import get_s3_client
+    from fastapi.responses import StreamingResponse, FileResponse
+    import os
     
     # Get active resume
     result = await db.execute(
@@ -337,19 +334,23 @@ async def get_resume_presigned_url(
     if not resume:
         raise HTTPException(status_code=404, detail="No resume found")
         
-    bucket_name, object_name = resume.file_url.replace("s3://", "").split("/", 1)
-    
-    s3 = get_s3_client()
-    url = s3.generate_presigned_url(
-        'get_object',
-        Params={'Bucket': bucket_name, 'Key': object_name},
-        ExpiresIn=3600
-    )
-    
-    # Replace internal docker hostname with localhost for browser access
-    url = url.replace("http://minio:9000", "http://localhost:9000")
-    
-    return {"url": url}
+    if resume.file_url.startswith("s3://"):
+        bucket_name, object_name = resume.file_url.replace("s3://", "").split("/", 1)
+        s3 = get_s3_client()
+        try:
+            obj = s3.get_object(Bucket=bucket_name, Key=object_name)
+            return StreamingResponse(
+                obj["Body"].iter_chunks(),
+                media_type=obj.get("ContentType", "application/pdf"),
+                headers={"Content-Disposition": f'inline; filename="{object_name}"'}
+            )
+        except Exception as e:
+            raise HTTPException(status_code=404, detail="File not found in storage")
+    else:
+        file_path = os.path.abspath(resume.file_url)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="The physical resume file was not found.")
+        return FileResponse(file_path, filename=os.path.basename(file_path))
 
 @router.get("/applications", response_model=List[ApplicationWithDetailsRead])
 async def get_candidate_applications(

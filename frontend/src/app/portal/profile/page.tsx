@@ -221,11 +221,17 @@ export default function CandidateProfilePage() {
                         className="w-full"
                         onClick={(e) => {
                           e.stopPropagation();
-                          let url = profile.resume!.file_url;
-                          if (url.startsWith("s3://")) {
-                            url = url.replace("s3://", "http://localhost:9000/");
-                          }
-                          window.open(url, "_blank");
+                          const token = localStorage.getItem("access_token");
+                          const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/candidate-portal/resume/download`;
+                          fetch(downloadUrl, { headers: { "Authorization": `Bearer ${token}` } })
+                            .then(async res => {
+                              if (!res.ok) throw new Error("Failed to download");
+                              const blob = await res.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              window.open(url, "_blank");
+                              setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+                            })
+                            .catch(() => toast.error("Failed to download resume"));
                         }}
                       >
                         <FileText className="mr-2 h-4 w-4" /> View PDF
