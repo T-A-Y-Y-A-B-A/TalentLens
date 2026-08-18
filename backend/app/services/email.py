@@ -1,6 +1,5 @@
 from celery import Celery
-import smtplib
-from email.message import EmailMessage
+import httpx
 
 from app.core.config import settings
 
@@ -11,24 +10,33 @@ celery_app = Celery(
 )
 
 def _send_email(to_email: str, subject: str, body: str):
-    msg = EmailMessage()
-    msg.set_content(body)
-    msg['Subject'] = subject
-    msg['From'] = settings.SMTP_USER
-    msg['To'] = to_email
+    if not settings.BREVO_API_KEY:
+        print(f"BREVO_API_KEY is not set. Would have sent: {subject} to {to_email}")
+        return
 
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.send_message(msg)
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "api-key": settings.BREVO_API_KEY,
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "sender": {"email": settings.SMTP_USER, "name": "TalentLens"},
+            "to": [{"email": to_email}],
+            "subject": subject,
+            # Simple wrapper to make the plaintext body look okay in HTML
+            "htmlContent": f"<p>{body.replace(chr(10), '<br>')}</p>"
+        }
+        
+        response = httpx.post(url, headers=headers, json=payload, timeout=10.0)
+        response.raise_for_status()
+        print(f"Successfully sent email to {to_email}. Brevo response: {response.text}")
     except Exception as e:
         print(f"Failed to send email to {to_email}: {e}")
 
 @celery_app.task
 def send_verification_email(email: str, token: str):
     subject = "Verify your TalentLens account"
-    # FRONTEND_URL from settings
     url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
     body = f"Please verify your email by clicking the following link:\n{url}"
     _send_email(email, subject, body)

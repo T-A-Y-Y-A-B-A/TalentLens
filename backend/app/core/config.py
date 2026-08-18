@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
+    BREVO_API_KEY: Optional[str] = None
     
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
