@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, FileText, CheckCircle2, Clock, XCircle, ArrowRight } from "lucide-react";
+import { Loader2, FileText, CheckCircle2, Clock, XCircle, ArrowRight, X } from "lucide-react";
 import { format } from "date-fns";
 
 type Application = {
@@ -19,22 +19,48 @@ type Application = {
 export default function CandidateApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+
+  const fetchApplications = async () => {
+    try {
+      const { data, error } = await apiClient.GET("/api/v1/candidate-portal/applications", {});
+      if (data) {
+        setApplications(data as unknown as Application[]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch applications", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchApplications() {
-      try {
-        const { data, error } = await apiClient.GET("/api/v1/candidate-portal/applications", {});
-        if (data) {
-          setApplications(data as unknown as Application[]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch applications", err);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchApplications();
   }, []);
+
+  const handleWithdraw = async (appId: string) => {
+    if (!confirm("Are you sure you want to withdraw this application? This cannot be undone.")) return;
+    setWithdrawingId(appId);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`/api/v1/applications/${appId}/withdraw`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        await fetchApplications();
+      } else {
+        alert("Failed to withdraw application.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error withdrawing application.");
+    } finally {
+      setWithdrawingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -116,6 +142,7 @@ export default function CandidateApplicationsPage() {
                     <TableHead className="w-[40%] text-zinc-900 font-semibold">Job Title</TableHead>
                     <TableHead className="text-zinc-900 font-semibold">Date Applied</TableHead>
                     <TableHead className="text-zinc-900 font-semibold">Current Status</TableHead>
+                    <TableHead className="text-right text-zinc-900 font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -129,6 +156,17 @@ export default function CandidateApplicationsPage() {
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(app.status, app.stage_name)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!["rejected", "withdrawn", "hired"].includes(app.status.toLowerCase()) && (
+                          <button
+                            onClick={() => handleWithdraw(app.id)}
+                            disabled={withdrawingId === app.id}
+                            className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                          >
+                            {withdrawingId === app.id ? "Withdrawing..." : "Withdraw"}
+                          </button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

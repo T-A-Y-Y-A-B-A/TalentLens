@@ -44,8 +44,9 @@ export default function CandidateDetailPage() {
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
 
-  useEffect(() => {
-    const fetchCandidateData = async () => {
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+
+  const fetchCandidateData = async () => {
       try {
         const { data: candData, error: candErr } = await apiClient.GET("/api/v1/candidates/{candidate_id}", {
           params: { path: { candidate_id: candidateId } }
@@ -106,8 +107,34 @@ export default function CandidateDetailPage() {
         setLoading(false);
       }
     };
+
+  useEffect(() => {
     if (candidateId) fetchCandidateData();
   }, [candidateId]);
+
+  const handleReject = async (appId: string) => {
+    if (!confirm("Are you sure you want to reject this application? This cannot be undone.")) return;
+    setRejectingId(appId);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`/api/v1/applications/${appId}/reject`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        await fetchCandidateData();
+      } else {
+        alert("Failed to reject application.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error rejecting application.");
+    } finally {
+      setRejectingId(null);
+    }
+  };
 
   const handleAddToJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,9 +300,22 @@ export default function CandidateDetailPage() {
                       <Briefcase className="h-5 w-5 text-gray-400 mr-2" />
                       <span className="font-medium text-gray-900">Job ID: {app.job_id.slice(0, 8)}</span>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Stage ID: {app.current_stage_id ? app.current_stage_id.slice(0, 8) : "Initial"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Status: {app.status || "active"} | Stage ID: {app.current_stage_id ? app.current_stage_id.slice(0, 8) : "Initial"}
+                      </span>
+                      {!["rejected", "withdrawn", "hired"].includes((app.status || "").toLowerCase()) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                          onClick={() => handleReject(app.id)}
+                          disabled={rejectingId === app.id}
+                        >
+                          {rejectingId === app.id ? "Rejecting..." : "Reject"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   <CardContent className="p-6">
