@@ -1,3 +1,3 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
-global.vi = vi;
+(globalThis as unknown as { vi: typeof vi }).vi = vi;
