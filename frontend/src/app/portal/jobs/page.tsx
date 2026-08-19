@@ -244,7 +244,7 @@ function CandidateJobsContent() {
         <SplitLayout 
           jobs={jobs} 
           selectedJob={selectedJob} 
-          onSelectJob={setSelectedJob} 
+          onSelectJob={(job) => setSelectedJob(job as Job)} 
           onApply={(job) => openApply(job as Job, { stopPropagation: () => {} } as any)} 
           appliedJobs={appliedJobs} 
         />
@@ -442,18 +442,21 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
         const formData = new FormData();
         formData.append("file", file);
         
-        const token = localStorage.getItem('access_token');
-        const response = await fetch("/api/v1/candidate-portal/resume", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`
-          },
-          body: formData
+        const { error: resumeErr } = await apiClient.POST("/api/v1/candidate-portal/resume", {
+          body: formData as any,
+          bodySerializer: (body) => body,
         });
 
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
-          throw new Error(err.detail || "Failed to upload resume");
+        if (resumeErr) {
+          let resumeErrMsg = "Failed to upload resume";
+          if ((resumeErr as any).detail) {
+            if (Array.isArray((resumeErr as any).detail)) {
+              resumeErrMsg = (resumeErr as any).detail.map((e: any) => e.msg).join(", ");
+            } else {
+              resumeErrMsg = (resumeErr as any).detail;
+            }
+          }
+          throw new Error(resumeErrMsg);
         }
         setResumeUploaded(true);
       }
