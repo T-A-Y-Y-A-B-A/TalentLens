@@ -74,4 +74,54 @@ describe('SplitLayout', () => {
 
     expect(screen.getByRole('button', { name: 'Already Applied' })).toBeInTheDocument();
   });
+
+  it('renders Indeed-style structured fields (salary, company desc, responsibilities, expectations, benefits)', () => {
+    const structuredJob = {
+      id: '3',
+      title: 'Full Stack Engineer',
+      description: 'Join our dynamic team building next-gen web apps.',
+      salary_range: '$120,000 - $150,000 / year',
+      company_description: 'Acme Corp is an innovator in AI tech.',
+      key_responsibilities: ['Build React frontends', 'Design FastAPI backends'],
+      expectations: ['5+ years experience', 'Fast learner'],
+      benefits: ['Health insurance', '401(k) matching', 'Remote work'],
+      organization_name: 'Acme Corp',
+      location: 'San Francisco, CA',
+      work_type: 'HYBRID'
+    };
+
+    render(
+      <SplitLayout 
+        jobs={[structuredJob]} 
+        selectedJob={structuredJob} 
+        onSelectJob={() => {}} 
+        onApply={() => {}} 
+        appliedJobs={new Set()} 
+      />
+    );
+
+    // Check salary badge in both list and detail view
+    const salaryBadges = screen.getAllByText('$120,000 - $150,000 / year');
+    expect(salaryBadges.length).toBeGreaterThanOrEqual(2);
+
+    // Check Company Description
+    expect(screen.getByText('About the Company')).toBeInTheDocument();
+    expect(screen.getByText('Acme Corp is an innovator in AI tech.')).toBeInTheDocument();
+
+    // Check Key Responsibilities
+    expect(screen.getByText('Key Responsibilities')).toBeInTheDocument();
+    expect(screen.getByText('Build React frontends')).toBeInTheDocument();
+    expect(screen.getByText('Design FastAPI backends')).toBeInTheDocument();
+
+    // Check Expectations
+    expect(screen.getByText('Expectations')).toBeInTheDocument();
+    expect(screen.getByText('5+ years experience')).toBeInTheDocument();
+    expect(screen.getByText('Fast learner')).toBeInTheDocument();
+
+    // Check Benefits
+    expect(screen.getByText('Benefits')).toBeInTheDocument();
+    expect(screen.getByText('Health insurance')).toBeInTheDocument();
+    expect(screen.getByText('401(k) matching')).toBeInTheDocument();
+    expect(screen.getByText('Remote work')).toBeInTheDocument();
+  });
 });
