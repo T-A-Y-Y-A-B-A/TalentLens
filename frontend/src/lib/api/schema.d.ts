@@ -287,7 +287,15 @@ export interface paths {
         get: operations["get_organization_api_v1_organizations__id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Organization
+         * @description Cascade soft-delete an entire organization.
+         *     Restricted to is_platform_admin users only.
+         *     Requires confirm_name in the request body to match the org's name exactly (server-side guard).
+         *     Soft-deletes: org, all jobs, all users, all interviews.
+         *     Sets all non-terminal applications to 'withdrawn'.
+         */
+        delete: operations["delete_organization_api_v1_organizations__id__delete"];
         options?: never;
         head?: never;
         /** Update Organization */
@@ -326,6 +334,29 @@ export interface paths {
         head?: never;
         /** Change User Role */
         patch: operations["change_user_role_api_v1_organizations__id__users__user_id__role_patch"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{id}/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Org Member
+         * @description Soft-delete a user from the organization.
+         *     Only hr_manager can perform this action.
+         *     Returns 404 for cross-org attempts (never 403 — prevents resource enumeration).
+         *     Returns 400 if attempting self-removal or removing the last admin/hr_manager.
+         */
+        delete: operations["remove_org_member_api_v1_organizations__id__users__user_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/departments": {
@@ -415,6 +446,26 @@ export interface paths {
          */
         put: operations["update_pipeline_stages_api_v1_jobs__job_id__stages_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/enhance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enhance Job Endpoint
+         * @description Uses AI to transform rough job notes into a complete, structured job description.
+         */
+        post: operations["enhance_job_endpoint_api_v1_jobs_enhance_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -583,6 +634,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/{application_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw Application Api
+         * @description Candidate withdraws their own application.
+         *     Returns 404 if the application doesn't exist or belongs to another candidate
+         *     (ownership is never revealed via 403).
+         *     Returns 409 if the application is already in a terminal status.
+         */
+        post: operations["withdraw_application_api_api_v1_applications__application_id__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Application Api
+         * @description Recruiter or HR manager rejects an application.
+         *     Returns 403 for wrong roles, 404 for cross-org or missing applications,
+         *     409 if already in a terminal status.
+         */
+        post: operations["reject_application_api_api_v1_applications__application_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{job_id}/match": {
         parameters: {
             query?: never;
@@ -706,7 +802,21 @@ export interface paths {
         get: operations["get_candidate_me_api_v1_candidate_portal_me_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Own Candidate Account
+         * @description Candidate soft-deletes their own account.
+         *
+         *     - Sets Candidate.deleted_at = now().
+         *     - Cascades: all non-terminal Applications (not withdrawn/rejected/hired)
+         *       are set to status='withdrawn'.
+         *     - Both mutations are committed in one transaction.
+         *
+         *     After a 204 the frontend MUST clear the JWT and redirect to /portal/login.
+         *     The token is now invalid because the candidate is soft-deleted; any subsequent
+         *     request using the old token will fail with 401 (get_current_candidate checks
+         *     the Candidate row exists and is not soft-deleted).
+         */
+        delete: operations["delete_own_candidate_account_api_v1_candidate_portal_me_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -746,15 +856,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/candidate-portal/resume/url": {
+    "/api/v1/candidate-portal/resume/download": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Resume Presigned Url */
-        get: operations["get_resume_presigned_url_api_v1_candidate_portal_resume_url_get"];
+        /** Download Candidate Resume */
+        get: operations["download_candidate_resume_api_v1_candidate_portal_resume_download_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1038,7 +1148,12 @@ export interface paths {
         get: operations["get_interview_api_v1_interviews__interview_id__get"];
         put?: never;
         post?: never;
-        /** Cancel Interview */
+        /**
+         * Cancel Interview
+         * @description Soft-delete an interview (sets deleted_at=now() and status='cancelled').
+         *     RBAC: recruiter or hr_manager only.
+         *     Returns 404 for cross-org interviews — never 403.
+         */
         delete: operations["cancel_interview_api_v1_interviews__interview_id__delete"];
         options?: never;
         head?: never;
@@ -1272,8 +1387,6 @@ export interface components {
             pipeline_conversion_pct: number;
             /** Pipeline Conversion Trend */
             pipeline_conversion_trend: number;
-            /** Ai Match Success Pct */
-            ai_match_success_pct: number;
             /** Active Jobs Count */
             active_jobs_count: number;
             /** Active Jobs Depts */
@@ -1944,12 +2057,47 @@ export interface components {
             title: string;
             /** Description */
             description: string;
+            /** Location */
+            location?: string | null;
             requirements?: components["schemas"]["JobRequirements"];
+            /** @default ONSITE */
             work_type: components["schemas"]["WorkType"];
             /** @default draft */
             status: components["schemas"]["JobStatus"];
             /** Department Id */
             department_id?: string | null;
+            /** Salary Range */
+            salary_range?: string | null;
+            /** Company Description */
+            company_description?: string | null;
+            /** Key Responsibilities */
+            key_responsibilities?: string[] | null;
+            /** Expectations */
+            expectations?: string[] | null;
+            /** Benefits */
+            benefits?: string[] | null;
+        };
+        /** JobEnhanceRequest */
+        JobEnhanceRequest: {
+            /** Rough Notes */
+            rough_notes: string;
+        };
+        /** JobEnhanceResponse */
+        JobEnhanceResponse: {
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Salary Range */
+            salary_range?: string | null;
+            /** Company Description */
+            company_description?: string | null;
+            /** Key Responsibilities */
+            key_responsibilities?: string[] | null;
+            /** Expectations */
+            expectations?: string[] | null;
+            /** Benefits */
+            benefits?: string[] | null;
         };
         /** JobRead */
         JobRead: {
@@ -1957,12 +2105,25 @@ export interface components {
             title: string;
             /** Description */
             description: string;
+            /** Location */
+            location?: string | null;
             requirements?: components["schemas"]["JobRequirements"];
+            /** @default ONSITE */
             work_type: components["schemas"]["WorkType"];
             /** @default draft */
             status: components["schemas"]["JobStatus"];
             /** Department Id */
             department_id?: string | null;
+            /** Salary Range */
+            salary_range?: string | null;
+            /** Company Description */
+            company_description?: string | null;
+            /** Key Responsibilities */
+            key_responsibilities?: string[] | null;
+            /** Expectations */
+            expectations?: string[] | null;
+            /** Benefits */
+            benefits?: string[] | null;
             /**
              * Id
              * Format: uuid
@@ -2010,11 +2171,23 @@ export interface components {
             title?: string | null;
             /** Description */
             description?: string | null;
+            /** Location */
+            location?: string | null;
             requirements?: components["schemas"]["JobRequirements"] | null;
             work_type?: components["schemas"]["WorkType"] | null;
             status?: components["schemas"]["JobStatus"] | null;
             /** Department Id */
             department_id?: string | null;
+            /** Salary Range */
+            salary_range?: string | null;
+            /** Company Description */
+            company_description?: string | null;
+            /** Key Responsibilities */
+            key_responsibilities?: string[] | null;
+            /** Expectations */
+            expectations?: string[] | null;
+            /** Benefits */
+            benefits?: string[] | null;
         };
         /** NotificationRead */
         NotificationRead: {
@@ -2052,6 +2225,14 @@ export interface components {
             reg_token: string;
             /** Org Name */
             org_name: string;
+        };
+        /**
+         * OrgDeleteConfirm
+         * @description Request body for org cascade-delete. confirm_name must exactly match org.name.
+         */
+        OrgDeleteConfirm: {
+            /** Confirm Name */
+            confirm_name: string;
         };
         /** OrganizationCreate */
         OrganizationCreate: {
@@ -2806,6 +2987,39 @@ export interface operations {
             };
         };
     };
+    delete_organization_api_v1_organizations__id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrgDeleteConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_organization_api_v1_organizations__id__patch: {
         parameters: {
             query?: never;
@@ -2896,6 +3110,36 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserListItem"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_org_member_api_v1_organizations__id__users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3207,6 +3451,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PipelineStageRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enhance_job_endpoint_api_v1_jobs_enhance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobEnhanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobEnhanceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3635,6 +3912,64 @@ export interface operations {
             };
         };
     };
+    withdraw_application_api_api_v1_applications__application_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_application_api_api_v1_applications__application_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     trigger_job_matching_api_v1_jobs__job_id__match_post: {
         parameters: {
             query?: never;
@@ -3848,6 +4183,24 @@ export interface operations {
             };
         };
     };
+    delete_own_candidate_account_api_v1_candidate_portal_me_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     update_candidate_profile_api_v1_candidate_portal_profile_patch: {
         parameters: {
             query?: never;
@@ -3914,7 +4267,7 @@ export interface operations {
             };
         };
     };
-    get_resume_presigned_url_api_v1_candidate_portal_resume_url_get: {
+    download_candidate_resume_api_v1_candidate_portal_resume_download_get: {
         parameters: {
             query?: never;
             header?: never;
