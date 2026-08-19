@@ -9,10 +9,15 @@ from app.models.recruitment import Department, Job, PipelineStage, JobStatus
 from app.schemas.recruitment import (
     DepartmentCreate, DepartmentUpdate,
     JobCreate, JobUpdate,
-    PipelineStageCreate, PipelineStageUpdate
+    PipelineStageCreate, PipelineStageUpdate,
+    JobEnhanceRequest, JobEnhanceResponse
 )
 from app.core.security import enforce_role
 from app.core.exceptions import DomainException
+from app.ai.llm import call_llm
+import structlog
+
+logger = structlog.get_logger()
 
 # --- Default Pipeline Stages ---
 DEFAULT_PIPELINE_STAGES = ["Applied", "Screening", "Interview", "Offer", "Hired", "Rejected"]
@@ -295,3 +300,42 @@ async def replace_job_pipeline_stages(db: AsyncSession, job_id: UUID, stages_in:
         await db.refresh(stage)
         
     return new_stages
+
+
+# --- Job AI Enhancement ---
+
+async def enhance_job_posting(request: JobEnhanceRequest) -> JobEnhanceResponse:
+    """
+    Transforms rough unstructured job notes into a structured job description using AI.
+    """
+    system_prompt = (
+        "You are an expert HR recruiter and talent acquisition specialist. "
+        "Your task is to take rough unstructured notes about a job opening and generate a comprehensive, structured job posting. "
+        "Extract or generate the following structured fields:\n"
+        "- title: A concise, industry-standard job title\n"
+        "- description: A clear, compelling overview of the role\n"
+        "- salary_range: The salary or compensation range if mentioned/inferred, or null\n"
+        "- company_description: A professional overview of the company culture and mission, or null\n"
+        "- key_responsibilities: A list of key duties and responsibilities\n"
+        "- expectations: A list of candidate qualifications, required skills, and expectations\n"
+        "- benefits: A list of perks, benefits, and offerings, or null\n\n"
+        "Ensure all output strictly adheres to the requested schema."
+    )
+    user_prompt = f"Please structure and enhance the following job notes into a complete job posting:\n\n{request.rough_notes}"
+    
+    try:
+        response = await call_llm(
+            prompt=user_prompt,
+            response_model=JobEnhanceResponse,
+            system_prompt=system_prompt,
+            temperature=0.2,
+        )
+        return response
+    except Exception as e:
+        logger.error("job_enhancement_llm_error", error=str(e))
+        raise DomainException(
+            "ai_service_unavailable",
+            f"AI job enhancement failed: {str(e)}",
+            status_code=503,
+        )
+

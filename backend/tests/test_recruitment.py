@@ -66,11 +66,14 @@ async def setup_users(async_client: AsyncClient, db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_rbac_recruiter_blocked(async_client: AsyncClient, setup_users):
     headers_rec_a = setup_users["rec_a"]["headers"]
+    headers_int_a = setup_users["int_a"]["headers"]
     
+    # Recruiter cannot manage departments
     resp = await async_client.post("/api/v1/departments", json={"name": "Engineering"}, headers=headers_rec_a)
     assert resp.status_code == 403
     
-    resp = await async_client.post("/api/v1/jobs", json={"title": "SWE", "description": "Dev"}, headers=headers_rec_a)
+    # Interviewer cannot create jobs
+    resp = await async_client.post("/api/v1/jobs", json={"title": "SWE", "description": "Dev"}, headers=headers_int_a)
     assert resp.status_code == 403
 
 
@@ -275,4 +278,76 @@ async def test_job_detailed_fields_crud(async_client: AsyncClient, setup_users):
     assert updated["salary_range"] == "$170k - $200k / yr"
     assert updated["benefits"] == ["Remote work stipend", "Unlimited PTO"]
     assert updated["company_description"] == "A high-growth AI startup revolutionizing recruitment."
+
+
+@pytest.mark.asyncio
+async def test_job_enhance_endpoint_success(async_client: AsyncClient, setup_users):
+    from unittest.mock import patch, AsyncMock
+    from app.schemas.recruitment import JobEnhanceResponse
+
+    headers_hr_a = setup_users["hr_a"]["headers"]
+    
+    mock_enhanced_job = JobEnhanceResponse(
+        title="Senior Full-Stack Engineer",
+        description="We are looking for a Senior Full-Stack Engineer to lead development of our next-gen platform.",
+        salary_range="$140,000 - $175,000 / year",
+        company_description="TalentLens is transforming recruitment using state-of-the-art AI.",
+        key_responsibilities=[
+            "Design and build scalable APIs using FastAPI and Python",
+            "Develop modern, responsive UIs with Next.js and React",
+            "Collaborate with AI researchers to deploy embeddings and search pipelines"
+        ],
+        expectations=[
+            "5+ years experience in full-stack software development",
+            "Proficiency in Python, FastAPI, TypeScript, and React",
+            "Experience with PostgreSQL and vector databases"
+        ],
+        benefits=[
+            "Competitive salary and equity options",
+            "Comprehensive health, vision, and dental insurance",
+            "Flexible remote work environment"
+        ]
+    )
+
+    with patch("app.services.recruitment.call_llm", new=AsyncMock(return_value=mock_enhanced_job)):
+        resp = await async_client.post(
+            "/api/v1/jobs/enhance",
+            json={"rough_notes": "need senior fullstack dev python fastapi react nextjs 5y exp $140k-$175k full remote perks"},
+            headers=headers_hr_a
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "Senior Full-Stack Engineer"
+        assert data["salary_range"] == "$140,000 - $175,000 / year"
+        assert len(data["key_responsibilities"]) == 3
+        assert len(data["expectations"]) == 3
+        assert len(data["benefits"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_job_enhance_endpoint_error_handling(async_client: AsyncClient, setup_users):
+    from unittest.mock import patch, AsyncMock
+
+    headers_hr_a = setup_users["hr_a"]["headers"]
+
+    with patch("app.services.recruitment.call_llm", new=AsyncMock(side_effect=RuntimeError("Groq API rate limit or outage"))):
+        resp = await async_client.post(
+            "/api/v1/jobs/enhance",
+            json={"rough_notes": "need backend dev"},
+            headers=headers_hr_a
+        )
+        assert resp.status_code == 503
+        data = resp.json()
+        assert data["success"] is False
+        assert data["error"]["code"] == "ai_service_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_job_enhance_endpoint_unauthenticated(async_client: AsyncClient):
+    resp = await async_client.post(
+        "/api/v1/jobs/enhance",
+        json={"rough_notes": "need backend dev"}
+    )
+    assert resp.status_code == 401
+
 

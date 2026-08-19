@@ -63,7 +63,7 @@ class JobBase(BaseModel):
     description: str
     location: Optional[str] = Field(default=None, min_length=1, max_length=100)
     requirements: JobRequirements = Field(default_factory=JobRequirements)
-    work_type: WorkType
+    work_type: WorkType = WorkType.ONSITE
     status: JobStatus = JobStatus.DRAFT
     department_id: Optional[UUID] = None
     salary_range: Optional[str] = None
@@ -109,3 +109,18 @@ class JobPublicRead(JobBase):
     department: Optional[DepartmentRead] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Job AI Enhancement Schemas ---
+
+class JobEnhanceRequest(BaseModel):
+    rough_notes: str
+
+class JobEnhanceResponse(BaseModel):
+    title: str
+    description: str
+    salary_range: Optional[str] = None
+    company_description: Optional[str] = None
+    key_responsibilities: Optional[List[str]] = Field(default_factory=list)
+    expectations: Optional[List[str]] = Field(default_factory=list)
+    benefits: Optional[List[str]] = Field(default_factory=list)

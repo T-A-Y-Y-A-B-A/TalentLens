@@ -9,11 +9,12 @@ from app.models.identity import User
 from app.models.recruitment import JobStatus
 from app.schemas.recruitment import (
     JobCreate, JobUpdate, JobRead,
-    PipelineStageCreate, PipelineStageRead
+    PipelineStageCreate, PipelineStageRead,
+    JobEnhanceRequest, JobEnhanceResponse
 )
 from app.services.recruitment import (
     get_jobs, get_job, create_job, update_job, delete_job,
-    replace_job_pipeline_stages
+    replace_job_pipeline_stages, enhance_job_posting
 )
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -70,3 +71,14 @@ async def update_pipeline_stages(
     Replaces all pipeline stages for a job with the provided list.
     """
     return await replace_job_pipeline_stages(db, job_id, stages, current_user)
+
+@router.post("/enhance", response_model=JobEnhanceResponse)
+async def enhance_job_endpoint(
+    request: JobEnhanceRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Uses AI to transform rough job notes into a complete, structured job description.
+    """
+    return await enhance_job_posting(request)
+
