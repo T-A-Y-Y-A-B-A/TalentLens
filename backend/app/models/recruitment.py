@@ -36,6 +36,11 @@ class Job(Base, TimestampMixin, TenantMixin):
     status = Column(Enum(JobStatus), default=JobStatus.DRAFT, nullable=False)
     location = Column(String, nullable=True)
     created_by = Column(GUID(), ForeignKey("users.id"), nullable=True)
+    salary_range = Column(String, nullable=True)
+    company_description = Column(String, nullable=True)
+    key_responsibilities = Column(JSONType(), default=list, nullable=True)
+    expectations = Column(JSONType(), default=list, nullable=True)
+    benefits = Column(JSONType(), default=list, nullable=True)
     
     department = relationship("Department", back_populates="jobs")
     pipeline_stages = relationship("PipelineStage", back_populates="job", cascade="all, delete-orphan")

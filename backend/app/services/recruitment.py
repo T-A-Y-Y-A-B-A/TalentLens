@@ -152,6 +152,12 @@ async def create_job(db: AsyncSession, obj_in: JobCreate, current_user: User) ->
         work_type=obj_in.work_type,
         status=obj_in.status,
         department_id=obj_in.department_id,
+        location=obj_in.location,
+        salary_range=obj_in.salary_range,
+        company_description=obj_in.company_description,
+        key_responsibilities=obj_in.key_responsibilities,
+        expectations=obj_in.expectations,
+        benefits=obj_in.benefits,
         created_by=current_user.id,
         org_id=current_user.org_id
     )

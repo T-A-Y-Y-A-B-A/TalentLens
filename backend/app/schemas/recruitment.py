@@ -66,6 +66,11 @@ class JobBase(BaseModel):
     work_type: WorkType
     status: JobStatus = JobStatus.DRAFT
     department_id: Optional[UUID] = None
+    salary_range: Optional[str] = None
+    company_description: Optional[str] = None
+    key_responsibilities: Optional[List[str]] = Field(default_factory=list)
+    expectations: Optional[List[str]] = Field(default_factory=list)
+    benefits: Optional[List[str]] = Field(default_factory=list)
 
 class JobCreate(JobBase):
     pass
@@ -78,6 +83,11 @@ class JobUpdate(BaseModel):
     work_type: Optional[WorkType] = None
     status: Optional[JobStatus] = None
     department_id: Optional[UUID] = None
+    salary_range: Optional[str] = None
+    company_description: Optional[str] = None
+    key_responsibilities: Optional[List[str]] = None
+    expectations: Optional[List[str]] = None
+    benefits: Optional[List[str]] = None
     
     model_config = ConfigDict(extra="forbid")
 

@@ -74,16 +74,36 @@ import app.services.email as email_service
 email_service.send_verification_email = MagicMock()
 email_service.send_password_reset_email = MagicMock()
 
+import app.services.auth as auth_service
+auth_service.send_verification_email = MagicMock()
+auth_service.send_password_reset_email = MagicMock()
+
+import app.core.qdrant as qdrant_module
+qdrant_module.init_qdrant = AsyncMock()
+
 import sys
 mock_matching = MagicMock()
 mock_matching.match_candidates_task = MagicMock()
 mock_matching.match_candidates_task.delay = MagicMock()
 sys.modules["app.workers.tasks.matching"] = mock_matching
 
+mock_kw = MagicMock()
+mock_kw.match_job_to_all_candidates = MagicMock()
+mock_kw.match_job_to_all_candidates.delay = MagicMock()
+mock_kw.match_candidate_to_all_jobs = MagicMock()
+mock_kw.match_candidate_to_all_jobs.delay = MagicMock()
+sys.modules["app.workers.tasks.keyword_matching"] = mock_kw
+
 # ---------------------------------------------------------------------------
 # 2. Import the FastAPI app and models
 # ---------------------------------------------------------------------------
 from app.main import app as fastapi_app
+from contextlib import asynccontextmanager
+@asynccontextmanager
+async def _mock_lifespan(app):
+    yield
+fastapi_app.router.lifespan_context = _mock_lifespan
+
 from app.core.database import get_db
 from app.models.base import Base
 import app.models  # noqa: F401 – register all models with Base.metadata

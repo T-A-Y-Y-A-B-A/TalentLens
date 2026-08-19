@@ -216,3 +216,63 @@ async def test_rbac_interviewer_blocked_from_jobs(async_client: AsyncClient, set
     # Interviewer tries to get departments
     resp = await async_client.get("/api/v1/departments", headers=headers_int_a)
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_job_detailed_fields_crud(async_client: AsyncClient, setup_users):
+    headers_hr_a = setup_users["hr_a"]["headers"]
+    
+    payload = {
+        "title": "Lead Software Engineer",
+        "description": "Lead engineering team",
+        "location": "San Francisco, CA",
+        "work_type": "HYBRID",
+        "salary_range": "$160k - $190k / yr",
+        "company_description": "A high-growth AI startup revolutionizing recruitment.",
+        "key_responsibilities": [
+            "Architect and build microservices",
+            "Mentor junior engineers",
+            "Lead sprint planning"
+        ],
+        "expectations": [
+            "5+ years of Python/FastAPI",
+            "Experience with distributed systems"
+        ],
+        "benefits": [
+            "Comprehensive health/dental/vision",
+            "Unlimited PTO",
+            "401(k) matching"
+        ]
+    }
+    
+    resp = await async_client.post("/api/v1/jobs", json=payload, headers=headers_hr_a)
+    assert resp.status_code == 201
+    job_data = resp.json()
+    assert job_data["salary_range"] == "$160k - $190k / yr"
+    assert job_data["company_description"] == "A high-growth AI startup revolutionizing recruitment."
+    assert job_data["key_responsibilities"] == payload["key_responsibilities"]
+    assert job_data["expectations"] == payload["expectations"]
+    assert job_data["benefits"] == payload["benefits"]
+    
+    job_id = job_data["id"]
+    
+    resp_get = await async_client.get(f"/api/v1/jobs/{job_id}", headers=headers_hr_a)
+    assert resp_get.status_code == 200
+    fetched = resp_get.json()
+    assert fetched["salary_range"] == "$160k - $190k / yr"
+    assert fetched["company_description"] == "A high-growth AI startup revolutionizing recruitment."
+    assert fetched["key_responsibilities"] == payload["key_responsibilities"]
+    assert fetched["expectations"] == payload["expectations"]
+    assert fetched["benefits"] == payload["benefits"]
+    
+    update_payload = {
+        "salary_range": "$170k - $200k / yr",
+        "benefits": ["Remote work stipend", "Unlimited PTO"]
+    }
+    resp_patch = await async_client.patch(f"/api/v1/jobs/{job_id}", json=update_payload, headers=headers_hr_a)
+    assert resp_patch.status_code == 200
+    updated = resp_patch.json()
+    assert updated["salary_range"] == "$170k - $200k / yr"
+    assert updated["benefits"] == ["Remote work stipend", "Unlimited PTO"]
+    assert updated["company_description"] == "A high-growth AI startup revolutionizing recruitment."
+
