@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useRef } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { apiClient } from "@/lib/api/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -12,6 +12,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SplitLayout } from "@/components/JobBoard/SplitLayout";
+import { AutoFillResume } from "@/components/JobBoard/AutoFillResume";
 
 type Job = {
   id: string;
@@ -239,88 +241,13 @@ function CandidateJobsContent() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {jobs.map((job) => {
-            const isApplied = appliedJobs.has(job.id);
-            const hasMatch = job.match_pct !== undefined && job.match_pct !== null;
-            
-            return (
-              <Card 
-                key={job.id} 
-                className={`flex flex-col transition-all hover:shadow-lg cursor-pointer ${hasMatch && job.match_pct! >= 75 ? 'border-indigo-200' : ''}`}
-                onClick={() => openDetails(job)}
-              >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="line-clamp-1 text-xl">{job.title}</CardTitle>
-                      <CardDescription className="flex items-center gap-4 mt-2">
-                        {job.department && (
-                          <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-600">
-                            <Building className="h-3.5 w-3.5" />
-                            {job.department.name}
-                          </span>
-                        )}
-                        {job.organization_name && (
-                          <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-600">
-                            <Building className="h-3.5 w-3.5" />
-                            {job.organization_name}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-600">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {formatWorkType(job.work_type)}
-                        </span>
-                      </CardDescription>
-                    </div>
-                    
-                    {hasMatch && (
-                      <div className="flex flex-col items-end">
-                        <Badge variant={job.match_pct! >= 80 ? "default" : job.match_pct! >= 50 ? "secondary" : "outline"} 
-                               className={job.match_pct! >= 80 ? 'bg-indigo-600' : ''}>
-                          {Math.round(job.match_pct!)}% Match
-                        </Badge>
-                        {job.ats_score !== undefined && (
-                          <span className="text-[10px] text-zinc-400 mt-1 font-medium">
-                            ATS: {job.ats_score}%
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="flex-1 space-y-4">
-                  <p className="text-sm text-zinc-600 line-clamp-3">
-                    {job.description}
-                  </p>
-                </CardContent>
-                
-                <CardFooter className="flex gap-3 bg-zinc-50/50 pt-4 border-t border-zinc-100">
-                  <Button 
-                    className={`flex-1 ${isApplied ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-zinc-900 hover:bg-zinc-800 text-white'}`}
-                    variant={isApplied ? "outline" : "default"}
-                    onClick={(e) => openApply(job, e)}
-                    disabled={isApplied}
-                  >
-                    {isApplied ? (
-                      <><CheckCircle2 className="mr-2 h-4 w-4" /> Applied</>
-                    ) : (
-                      'Apply Now'
-                    )}
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-                  >
-                    View Details
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
+        <SplitLayout 
+          jobs={jobs} 
+          selectedJob={selectedJob} 
+          onSelectJob={setSelectedJob} 
+          onApply={(job) => openApply(job as Job, { stopPropagation: () => {} } as any)} 
+          appliedJobs={appliedJobs} 
+        />
       )}
 
       {/* Job Details Modal */}
@@ -476,7 +403,6 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
   
   const [file, setFile] = useState<File | null>(null);
   const [resumeUploaded, setResumeUploaded] = useState(false); // IDEMPOTENCY FLAG
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -485,22 +411,6 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
       setMissingFields([]);
     }
   }, [isOpen]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      // 5MB validation
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setErrorMsg("File size must be less than 5MB.");
-        setFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
-      setErrorMsg("");
-      setFile(selectedFile);
-      setResumeUploaded(false); // New file means it hasn't been uploaded yet
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -596,6 +506,17 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <AutoFillResume 
+            onFileSelected={setFile} 
+            onExtractedData={(data: any) => { 
+              setName(data.name || name); 
+              setPhone(data.phone || phone); 
+              if(data.education) setEducation(data.education); 
+              if(data.experience) setExperience(data.experience); 
+              setResumeUploaded(true); 
+            }} 
+          />
+
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -712,25 +633,6 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Resume Upload */}
-          <div className="space-y-2 border-t pt-4">
-            <Label>Resume Upload (PDF/DOCX, Max 5MB) *</Label>
-            <div className="flex flex-col gap-2">
-              <Input 
-                type="file" 
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-                onChange={(e) => {
-                  handleFileChange(e);
-                  if (missingFields.includes('resume')) setMissingFields(m => m.filter(f => f !== 'resume'));
-                }} 
-                ref={fileInputRef} 
-                className={missingFields.includes('resume') ? 'border-red-500 text-red-500' : ''}
-              />
-              {missingFields.includes('resume') && <p className="text-xs text-red-500">A resume is required to apply.</p>}
-              {resumeUploaded && <span className="text-xs text-green-600 font-medium">✓ Resume uploaded successfully</span>}
-            </div>
           </div>
 
           <div className="flex justify-end pt-4 gap-3">
