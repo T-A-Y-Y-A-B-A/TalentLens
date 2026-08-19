@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SplitLayout } from "@/components/JobBoard/SplitLayout";
-import { AutoFillResume } from "@/components/JobBoard/AutoFillResume";
 
 type Job = {
   id: string;
@@ -389,28 +388,58 @@ function CandidateJobsContent() {
   );
 }
 
+type EducationItem = { degree: string; institution: string; field_of_study?: string };
+type ExperienceItem = { role: string; company: string; duration?: string };
+type CertificationItem = { name: string; issuing_body?: string };
+
 function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpen: boolean, onClose: () => void, onSuccess: () => void, user: any }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [missingFields, setMissingFields] = useState<string[]>([]);
   
-  const [name, setName] = useState(user?.name || "");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState<string>(user?.parsed_data?.name || user?.name || "");
+  const [phone, setPhone] = useState<string>(user?.parsed_data?.phone || user?.phone || "");
   
-  const [education, setEducation] = useState([{ degree: "", institution: "", field_of_study: "" }]);
-  const [experience, setExperience] = useState([{ role: "", company: "", duration: "" }]);
-  const [certifications, setCertifications] = useState([{ name: "", issuing_body: "" }]);
-  
-  const [file, setFile] = useState<File | null>(null);
-  const [resumeUploaded, setResumeUploaded] = useState(false); // IDEMPOTENCY FLAG
+  const [education, setEducation] = useState<EducationItem[]>(
+    user?.parsed_data?.education && Array.isArray(user.parsed_data.education) && user.parsed_data.education.length > 0
+      ? user.parsed_data.education
+      : [{ degree: "", institution: "", field_of_study: "" }]
+  );
+  const [experience, setExperience] = useState<ExperienceItem[]>(
+    user?.parsed_data?.experience && Array.isArray(user.parsed_data.experience) && user.parsed_data.experience.length > 0
+      ? user.parsed_data.experience
+      : [{ role: "", company: "", duration: "" }]
+  );
+  const [certifications, setCertifications] = useState<CertificationItem[]>(
+    user?.parsed_data?.certifications && Array.isArray(user.parsed_data.certifications) && user.parsed_data.certifications.length > 0
+      ? user.parsed_data.certifications
+      : [{ name: "", issuing_body: "" }]
+  );
 
   useEffect(() => {
     if (isOpen) {
       setErrorMsg("");
       setIsSubmitting(false);
       setMissingFields([]);
+      setName(user?.parsed_data?.name || user?.name || "");
+      setPhone(user?.parsed_data?.phone || user?.phone || "");
+      setEducation(
+        user?.parsed_data?.education && Array.isArray(user.parsed_data.education) && user.parsed_data.education.length > 0
+          ? user.parsed_data.education
+          : [{ degree: "", institution: "", field_of_study: "" }]
+      );
+      setExperience(
+        user?.parsed_data?.experience && Array.isArray(user.parsed_data.experience) && user.parsed_data.experience.length > 0
+          ? user.parsed_data.experience
+          : [{ role: "", company: "", duration: "" }]
+      );
+      setCertifications(
+        user?.parsed_data?.certifications && Array.isArray(user.parsed_data.certifications) && user.parsed_data.certifications.length > 0
+          ? user.parsed_data.certifications
+          : [{ name: "", issuing_body: "" }]
+      );
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -425,7 +454,6 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
     // Required-field validation
     const missing: string[] = [];
     if (!phone.trim()) missing.push("phone");
-    if (!file && !resumeUploaded) missing.push("resume");
     if (cleanEdu.length === 0) missing.push("education");
 
     if (missing.length > 0) {
@@ -437,31 +465,6 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
     setIsSubmitting(true);
 
     try {
-      // Step 1: Upload resume if provided and not yet uploaded
-      if (file && !resumeUploaded) {
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        const { error: resumeErr } = await apiClient.POST("/api/v1/candidate-portal/resume", {
-          body: formData as any,
-          bodySerializer: (body) => body,
-        });
-
-        if (resumeErr) {
-          let resumeErrMsg = "Failed to upload resume";
-          if ((resumeErr as any).detail) {
-            if (Array.isArray((resumeErr as any).detail)) {
-              resumeErrMsg = (resumeErr as any).detail.map((e: any) => e.msg).join(", ");
-            } else {
-              resumeErrMsg = (resumeErr as any).detail;
-            }
-          }
-          throw new Error(resumeErrMsg);
-        }
-        setResumeUploaded(true);
-      }
-
-      // Step 2: Apply
       const { error } = await apiClient.POST("/api/v1/candidate-portal/apply", {
         body: {
           job_id: job.id,
@@ -509,16 +512,6 @@ function ApplyModal({ job, isOpen, onClose, onSuccess, user }: { job: Job, isOpe
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <AutoFillResume 
-            onFileSelected={setFile} 
-            onExtractedData={(data: any) => { 
-              setName(data.name || name); 
-              setPhone(data.phone || phone); 
-              if(data.education) setEducation(data.education); 
-              if(data.experience) setExperience(data.experience); 
-              setResumeUploaded(true); 
-            }} 
-          />
 
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
