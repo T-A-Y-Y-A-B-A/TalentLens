@@ -175,59 +175,148 @@ function JobBoardContent() {
             Select a role to see full details
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-zinc-200">
-            <div className="flex justify-between items-start mb-1">
-              <h1 className="text-2xl font-bold text-zinc-900">{selected.title}</h1>
+          <div className="mx-auto max-w-4xl bg-white p-10 rounded-2xl shadow-sm border border-zinc-200">
+            <div className="flex justify-between items-start mb-2">
+              <h1 className="text-3xl font-bold text-zinc-900">{selected.title}</h1>
               {selected.salary_min && selected.salary_max && (
-                <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm">
-                  <span className="text-emerald-700 font-semibold text-sm">
+                <div className="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm">
+                  <span className="text-emerald-700 font-bold text-sm">
                     ${selected.salary_min.toLocaleString()} - ${selected.salary_max.toLocaleString()} <span className="text-emerald-600 font-medium text-xs">{selected.currency}</span>
                   </span>
                 </div>
               )}
             </div>
-            <p className="text-zinc-500">{selected.org_name}</p>
+            <p className="text-lg text-zinc-500 mb-8">{selected.org_name}</p>
             
-            <div className="mt-8 space-y-8">
+            <div className="space-y-10">
               {selected.company_description && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">About the Company</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 mb-4 border-b border-zinc-100 pb-2">About the Company</h3>
                   {renderTextContent(selected.company_description)}
                 </div>
               )}
               
               {selected.key_responsibilities && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Key Responsibilities</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 mb-4 border-b border-zinc-100 pb-2">Key Responsibilities</h3>
                   {renderTextContent(selected.key_responsibilities)}
                 </div>
               )}
               
               {selected.expectations && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">What We Expect</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 mb-4 border-b border-zinc-100 pb-2">What We Expect</h3>
                   {renderTextContent(selected.expectations)}
                 </div>
               )}
               
               {selected.requirements && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Requirements</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 mb-4 border-b border-zinc-100 pb-2">Requirements</h3>
                   {renderRequirements(selected.requirements)}
                 </div>
               )}
               
               {selected.benefits && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Benefits</h3>
+                  <h3 className="text-xl font-semibold text-zinc-900 mb-4 border-b border-zinc-100 pb-2">Benefits</h3>
                   {renderTextContent(selected.benefits)}
                 </div>
               )}
+
+              {/* AI Match Report Section */}
+              {hasResume && selected.composite_score !== null && (
+                <div className="mt-12 pt-8 border-t-2 border-indigo-50">
+                  <div className="bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 p-8 rounded-2xl border border-indigo-100/50 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500"></div>
+                    
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                      </div>
+                      <h3 className="text-2xl font-bold text-zinc-900">AI Match Analysis</h3>
+                      <div className="ml-auto flex items-center gap-2">
+                        <span className="text-sm font-medium text-zinc-500">Overall Fit</span>
+                        <div className="px-4 py-1.5 bg-indigo-600 text-white font-bold rounded-full text-lg shadow-sm">
+                          {Math.round(selected.composite_score)}%
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Strengths */}
+                      <div>
+                        <h4 className="text-sm font-bold text-emerald-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          Matched Strengths
+                        </h4>
+                        {selected.matched_skills && selected.matched_skills.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selected.matched_skills.map((skill: string, i: number) => (
+                              <span key={i} className="px-3 py-1.5 bg-emerald-100 text-emerald-800 text-sm font-medium rounded-lg border border-emerald-200">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-zinc-500 text-sm italic">No direct skill matches identified in your profile.</p>
+                        )}
+                      </div>
+
+                      {/* Gaps */}
+                      <div>
+                        <h4 className="text-sm font-bold text-rose-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                          Skill Gaps
+                        </h4>
+                        {selected.missing_skills && selected.missing_skills.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selected.missing_skills.map((skill: string, i: number) => (
+                              <span key={i} className="px-3 py-1.5 bg-rose-50 text-rose-700 text-sm font-medium rounded-lg border border-rose-200 opacity-90">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-emerald-600 text-sm font-medium">No missing skills detected! You cover all requirements.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* AI Insights (Flags) */}
+                    {selected.flags && selected.flags.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-indigo-100/50">
+                        <h4 className="text-sm font-bold text-indigo-900 uppercase tracking-wider mb-3">AI Insights</h4>
+                        <ul className="space-y-2">
+                          {selected.flags.includes("low_relevant_experience") && (
+                            <li className="flex items-start gap-2 text-sm text-indigo-800 bg-indigo-50/80 p-3 rounded-lg border border-indigo-100">
+                              <span className="text-indigo-500 mt-0.5">•</span> 
+                              <span>Your past job titles suggest you may have limited direct experience in this specific domain, which impacted your match score. Highlight any transferable projects in your cover letter.</span>
+                            </li>
+                          )}
+                          {selected.flags.includes("title_mismatch") && (
+                            <li className="flex items-start gap-2 text-sm text-indigo-800 bg-indigo-50/80 p-3 rounded-lg border border-indigo-100">
+                              <span className="text-indigo-500 mt-0.5">•</span> 
+                              <span>Your recent job titles don't strongly align with this role's title. Be prepared to explain your career pivot or how your current skills apply.</span>
+                            </li>
+                          )}
+                          {selected.flags.includes("incomplete_jd_data") && (
+                            <li className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50/80 p-3 rounded-lg border border-amber-100">
+                              <span className="text-amber-500 mt-0.5">•</span> 
+                              <span>The employer provided limited details for this job, so this match score relies heavily on keyword requirements rather than deep semantic analysis.</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
-              <div className="pt-6 mt-6 border-t border-zinc-100 flex justify-end">
+              <div className="pt-8 mt-8 border-t-2 border-zinc-100 flex justify-end">
                 <button
                   onClick={() => handleApply(selected.id)}
-                  className="px-6 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+                  className="px-8 py-3.5 bg-zinc-900 text-white text-base font-bold rounded-xl hover:bg-zinc-800 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
                 >
                   Apply Now
                 </button>
