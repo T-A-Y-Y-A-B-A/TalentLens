@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from uuid import UUID
 from app.models.recruitment import JobStatus, WorkType
@@ -73,7 +73,16 @@ class JobBase(BaseModel):
     benefits: Optional[List[str]] = Field(default_factory=list)
 
 class JobCreate(JobBase):
-    pass
+    salary_min: int = Field(..., gt=0)
+    salary_max: int = Field(..., gt=0)
+    currency: str = Field(default="USD", max_length=3)
+    salary_period: Literal["yearly", "monthly"] = "yearly"
+
+    @model_validator(mode="after")
+    def check_salary_range(self):
+        if self.salary_max < self.salary_min:
+            raise ValueError("salary_max must be >= salary_min")
+        return self
 
 class JobUpdate(BaseModel):
     title: Optional[str] = None
@@ -108,7 +117,30 @@ class JobPublicRead(JobBase):
     created_at: datetime
     department: Optional[DepartmentRead] = None
     
+    
     model_config = ConfigDict(from_attributes=True)
+
+
+class JobBoardCard(BaseModel):
+    id: UUID
+    title: str
+    org_name: str
+    work_type: str
+    location: str
+    salary_min: int | None
+    salary_max: int | None
+    currency: str
+    salary_period: str
+    match_pct: float | None      # None if candidate has no resume yet
+    matched_skills: list[str] | None
+    missing_skills: list[str] | None
+    posted_at: datetime
+
+class JobBoardResponse(BaseModel):
+    jobs: list[JobBoardCard]
+    total: int
+    limit: int
+    offset: int
 
 
 # --- Job AI Enhancement Schemas ---

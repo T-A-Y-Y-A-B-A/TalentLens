@@ -36,7 +36,11 @@ class Job(Base, TimestampMixin, TenantMixin):
     status = Column(Enum(JobStatus), default=JobStatus.DRAFT, nullable=False)
     location = Column(String, nullable=True)
     created_by = Column(GUID(), ForeignKey("users.id"), nullable=True)
-    salary_range = Column(String, nullable=True)
+    salary_range = Column(String, nullable=True)  # Deprecated in favor of min/max
+    salary_min = Column(Integer, nullable=True)
+    salary_max = Column(Integer, nullable=True)
+    currency = Column(String(3), nullable=False, default="USD", server_default="USD")
+    salary_period = Column(String(10), nullable=False, default="yearly", server_default="yearly")
     company_description = Column(String, nullable=True)
     key_responsibilities = Column(JSONType(), default=list, nullable=True)
     expectations = Column(JSONType(), default=list, nullable=True)

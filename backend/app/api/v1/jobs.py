@@ -4,17 +4,19 @@ from typing import List, Optional
 from uuid import UUID
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import get_current_user, require_permission, get_current_candidate_optional
 from app.models.identity import User
+from app.models.candidate import Candidate
 from app.models.recruitment import JobStatus
 from app.schemas.recruitment import (
     JobCreate, JobUpdate, JobRead,
     PipelineStageCreate, PipelineStageRead,
-    JobEnhanceRequest, JobEnhanceResponse
+    JobEnhanceRequest, JobEnhanceResponse,
+    JobBoardResponse
 )
 from app.services.recruitment import (
     get_jobs, get_job, create_job, update_job, delete_job,
-    replace_job_pipeline_stages, enhance_job_posting
+    replace_job_pipeline_stages, enhance_job_posting, get_job_board
 )
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -26,6 +28,30 @@ async def list_jobs(
     current_user: User = Depends(require_permission("jobs", "read"))
 ):
     return await get_jobs(db, current_user, status)
+
+@router.get("/board", response_model=JobBoardResponse)
+async def get_job_board_endpoint(
+    work_type: Optional[str] = None,
+    location: Optional[str] = None,
+    salary_min: Optional[int] = None,
+    sort_by_match: bool = False,
+    limit: int = Query(20, le=100),
+    offset: int = 0,
+    current_candidate: Optional[Candidate] = Depends(get_current_candidate_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    candidate_id = current_candidate.id if current_candidate else None
+    cards, total = await get_job_board(
+        db,
+        candidate_id=candidate_id,
+        work_type=work_type,
+        location=location,
+        salary_min=salary_min,
+        sort_by_match=sort_by_match,
+        limit=limit,
+        offset=offset
+    )
+    return JobBoardResponse(jobs=cards, total=total, limit=limit, offset=offset)
 
 @router.get("/{job_id}", response_model=JobRead)
 async def get_job_by_id(

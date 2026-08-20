@@ -10,7 +10,8 @@ from app.schemas.recruitment import (
     DepartmentCreate, DepartmentUpdate,
     JobCreate, JobUpdate,
     PipelineStageCreate, PipelineStageUpdate,
-    JobEnhanceRequest, JobEnhanceResponse
+    JobEnhanceRequest, JobEnhanceResponse,
+    JobBoardCard, JobBoardResponse
 )
 from app.core.security import enforce_role
 from app.core.exceptions import DomainException
@@ -338,4 +339,79 @@ async def enhance_job_posting(request: JobEnhanceRequest) -> JobEnhanceResponse:
             f"AI job enhancement failed: {str(e)}",
             status_code=503,
         )
+
+# --- Job Board ---
+
+async def get_job_board(
+    db: AsyncSession,
+    candidate_id: UUID | None,
+    work_type: Optional[str],
+    location: Optional[str],
+    salary_min: Optional[int],
+    sort_by_match: bool,
+    limit: int,
+    offset: int
+) -> tuple[List[JobBoardCard], int]:
+    from sqlalchemy import func, and_
+    from app.models.ai import JobMatch
+    from app.models.identity import Organization
+    
+    count_stmt = select(func.count(Job.id)).where(Job.status == JobStatus.OPEN)
+    
+    stmt = (
+        select(Job, JobMatch, Organization.name.label("org_name"))
+        .join(Organization, Organization.id == Job.org_id)
+        .outerjoin(
+            JobMatch,
+            and_(
+                JobMatch.job_id == Job.id,
+                JobMatch.candidate_id == candidate_id,
+            )
+        )
+        .where(Job.status == JobStatus.OPEN)
+    )
+    
+    if work_type:
+        count_stmt = count_stmt.where(Job.work_type == work_type)
+        stmt = stmt.where(Job.work_type == work_type)
+    if location:
+        count_stmt = count_stmt.where(Job.location.ilike(f"%{location}%"))
+        stmt = stmt.where(Job.location.ilike(f"%{location}%"))
+    if salary_min:
+        count_stmt = count_stmt.where(Job.salary_max >= salary_min)
+        stmt = stmt.where(Job.salary_max >= salary_min)
+        
+    total_count = await db.scalar(count_stmt) or 0
+    
+    if sort_by_match and candidate_id:
+        stmt = stmt.order_by(JobMatch.match_pct.desc().nulls_last())
+    else:
+        stmt = stmt.order_by(Job.created_at.desc())
+        
+    stmt = stmt.limit(limit).offset(offset)
+    
+    result = await db.execute(stmt)
+    rows = result.all()
+    
+    cards = []
+    for job, match, org_name in rows:
+        cards.append(
+            JobBoardCard(
+                id=job.id,
+                title=job.title,
+                org_name=org_name,
+                work_type=job.work_type.value if hasattr(job.work_type, 'value') else job.work_type,
+                location=job.location or "Remote",
+                salary_min=job.salary_min,
+                salary_max=job.salary_max,
+                currency=job.currency,
+                salary_period=job.salary_period,
+                match_pct=match.match_pct if match else None,
+                matched_skills=match.matched_skills if match else None,
+                missing_skills=match.missing_skills if match else None,
+                posted_at=job.created_at
+            )
+        )
+        
+    return cards, total_count
 
