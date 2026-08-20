@@ -136,6 +136,13 @@ class JobBoardCard(BaseModel):
     matched_skills: list[str] | None
     missing_skills: list[str] | None
     posted_at: datetime
+    
+    # JD details
+    key_responsibilities: str | None = None
+    expectations: str | None = None
+    requirements: dict | list | str | None = None
+    benefits: str | None = None
+    company_description: str | None = None
 
 class JobBoardResponse(BaseModel):
     jobs: list[JobBoardCard]

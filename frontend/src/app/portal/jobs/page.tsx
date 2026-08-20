@@ -118,7 +118,56 @@ function JobBoardContent() {
           <div className="mx-auto max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-zinc-200">
             <h1 className="text-2xl font-bold text-zinc-900">{selected.title}</h1>
             <p className="mt-1 text-zinc-500">{selected.org_name}</p>
-            {/* Full job description, missing_skills breakdown, apply CTA go here */}
+            
+            <div className="mt-8 space-y-6">
+              {selected.company_description && (
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">About the Company</h3>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.company_description}</div>
+                </div>
+              )}
+              
+              {selected.key_responsibilities && (
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">Key Responsibilities</h3>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.key_responsibilities}</div>
+                </div>
+              )}
+              
+              {selected.expectations && (
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">What We Expect</h3>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.expectations}</div>
+                </div>
+              )}
+              
+              {selected.requirements && (
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">Requirements</h3>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
+                    {typeof selected.requirements === 'string' 
+                      ? selected.requirements 
+                      : JSON.stringify(selected.requirements, null, 2)}
+                  </div>
+                </div>
+              )}
+              
+              {selected.benefits && (
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">Benefits</h3>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.benefits}</div>
+                </div>
+              )}
+              
+              <div className="pt-6 mt-6 border-t border-zinc-100 flex justify-end">
+                <button
+                  onClick={() => handleApply(selected.id)}
+                  className="px-6 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+                >
+                  Apply Now
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

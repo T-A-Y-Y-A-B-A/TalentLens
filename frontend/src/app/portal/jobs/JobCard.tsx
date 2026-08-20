@@ -17,6 +17,11 @@ export type JobCardData = {
   matched_skills: string[] | null;
   missing_skills: string[] | null;
   posted_at: string;
+  key_responsibilities?: string | null;
+  expectations?: string | null;
+  requirements?: any | null;
+  benefits?: string | null;
+  company_description?: string | null;
 };
 
 export function JobCard({

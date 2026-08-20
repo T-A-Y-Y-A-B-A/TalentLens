@@ -416,7 +416,12 @@ async def get_job_board(
                 flags=match.flags if match else None,
                 matched_skills=match.matched_skills if match else None,
                 missing_skills=match.missing_skills if match else None,
-                posted_at=job.created_at
+                posted_at=job.created_at,
+                key_responsibilities=job.key_responsibilities,
+                expectations=job.expectations,
+                requirements=job.requirements,
+                benefits=job.benefits,
+                company_description=job.company_description
             )
         )
         
