@@ -31,10 +31,21 @@ function JobBoardContent() {
     if (filters.sort_by_match) params.set("sort_by_match", "true");
     if (filters.search) params.set("q", filters.search);
 
-    const res = await fetch(`/api/jobs/board?${params.toString()}`);
-    const data = await res.json();
-    setJobs(data.jobs);
-    setLoading(false);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/v1/jobs/board?${params.toString()}`, { headers });
+      if (!res.ok) throw new Error("Failed to fetch jobs");
+      const data = await res.json();
+      setJobs(data.jobs || []);
+    } catch (e) {
+      console.error(e);
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
   }, [filters]);
 
   useEffect(() => {
@@ -44,8 +55,20 @@ function JobBoardContent() {
 
   const handleApply = async (jobId: string) => {
     if (hasResume) {
-      await fetch(`/api/jobs/${jobId}/apply`, { method: "POST" });
-      // TODO: toast "Applied" + optimistic UI update
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        await fetch(`/api/v1/candidate-portal/apply`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ job_id: jobId })
+        });
+        // TODO: toast "Applied" + optimistic UI update
+      } catch (e) {
+        console.error("Apply failed", e);
+      }
     } else {
       // TODO: open resume upload modal, then apply
     }
