@@ -67,7 +67,15 @@ class JSONType(TypeDecorator):
             return value
         if isinstance(value, dict) or isinstance(value, list):
             return value
-        return json.loads(value)
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            # Fallback if it was saved as python string representation
+            import ast
+            try:
+                return ast.literal_eval(value)
+            except:
+                return {"error": "invalid json", "raw": value}
 
 
 class Base(DeclarativeBase):
