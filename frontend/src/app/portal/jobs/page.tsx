@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { JobCard, JobCardData } from "./JobCard";
 import { FilterBar, JobBoardFilters } from "./FilterBar";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 const DEFAULT_FILTERS: JobBoardFilters = {
   search: "",
@@ -12,7 +13,10 @@ const DEFAULT_FILTERS: JobBoardFilters = {
   sort_by_match: false,
 };
 
-export default function JobBoardPage({ hasResume }: { hasResume: boolean }) {
+function JobBoardContent() {
+  const { user } = useAuth();
+  const hasResume = !!((user as any)?.parsed_data?.education || (user as any)?.parsed_data?.experience);
+
   const [jobs, setJobs] = useState<JobCardData[]>([]);
   const [filters, setFilters] = useState<JobBoardFilters>(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -50,9 +54,9 @@ export default function JobBoardPage({ hasResume }: { hasResume: boolean }) {
   const selected = jobs.find((j) => j.id === selectedId) ?? null;
 
   return (
-    <div className="flex h-screen bg-slate-950">
+    <div className="flex h-screen bg-zinc-50">
       {/* Left: filterable list */}
-      <div className="flex w-full max-w-md flex-col border-r border-slate-800 lg:max-w-lg">
+      <div className="flex w-full max-w-md flex-col border-r border-zinc-200 bg-white lg:max-w-lg">
         <FilterBar
           filters={filters}
           onChange={setFilters}
@@ -61,10 +65,10 @@ export default function JobBoardPage({ hasResume }: { hasResume: boolean }) {
         />
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {loading && (
-            <div className="py-12 text-center text-sm text-slate-500">Loading roles...</div>
+            <div className="py-12 text-center text-sm text-zinc-500">Loading roles...</div>
           )}
           {!loading && jobs.length === 0 && (
-            <div className="py-12 text-center text-sm text-slate-500">
+            <div className="py-12 text-center text-sm text-zinc-500">
               No roles match your filters yet — try widening your search.
             </div>
           )}
@@ -82,19 +86,27 @@ export default function JobBoardPage({ hasResume }: { hasResume: boolean }) {
       </div>
 
       {/* Right: detail pane */}
-      <div className="hidden flex-1 overflow-y-auto p-8 lg:block">
+      <div className="hidden flex-1 overflow-y-auto p-8 bg-zinc-50 lg:block">
         {!selected ? (
-          <div className="flex h-full items-center justify-center text-slate-600">
+          <div className="flex h-full items-center justify-center text-zinc-500">
             Select a role to see full details
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl">
-            <h1 className="text-2xl font-bold text-slate-100">{selected.title}</h1>
-            <p className="mt-1 text-slate-400">{selected.org_name}</p>
+          <div className="mx-auto max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-zinc-200">
+            <h1 className="text-2xl font-bold text-zinc-900">{selected.title}</h1>
+            <p className="mt-1 text-zinc-500">{selected.org_name}</p>
             {/* Full job description, missing_skills breakdown, apply CTA go here */}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function JobBoardPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">Loading...</div>}>
+      <JobBoardContent />
+    </Suspense>
   );
 }
