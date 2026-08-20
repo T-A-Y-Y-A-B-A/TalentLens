@@ -30,6 +30,7 @@ function JobBoardContent() {
     if (filters.salary_min) params.set("salary_min", String(filters.salary_min));
     if (filters.sort_by_match) params.set("sort_by_match", "true");
     if (filters.search) params.set("q", filters.search);
+    params.set("limit", "100");
 
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;

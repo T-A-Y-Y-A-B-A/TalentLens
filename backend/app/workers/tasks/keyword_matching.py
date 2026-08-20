@@ -8,7 +8,7 @@ from app.models.recruitment import Job, JobStatus
 from app.models.candidate import Candidate
 from app.models.ai import JobMatch
 
-MATCH_THRESHOLD = 35
+MATCH_THRESHOLD = 0
 
 
 def compute_keyword_match(candidate_skills: list[str], job_requirements: dict) -> dict:
