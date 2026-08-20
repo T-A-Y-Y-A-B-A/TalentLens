@@ -75,6 +75,65 @@ function JobBoardContent() {
     }
   };
 
+  const renderRequirements = (reqs: any) => {
+    if (!reqs) return null;
+    if (typeof reqs === "string") return <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{reqs}</div>;
+    
+    // If it's the expected dict
+    if (typeof reqs === "object" && !Array.isArray(reqs)) {
+      return (
+        <div className="space-y-3">
+          {reqs.education && (
+            <div>
+              <span className="font-semibold text-zinc-800 text-sm">Education:</span>
+              <span className="text-zinc-600 text-sm ml-2">{reqs.education}</span>
+            </div>
+          )}
+          {reqs.experience_years !== undefined && (
+            <div>
+              <span className="font-semibold text-zinc-800 text-sm">Experience:</span>
+              <span className="text-zinc-600 text-sm ml-2">{reqs.experience_years} years</span>
+            </div>
+          )}
+          {reqs.required_skills && reqs.required_skills.length > 0 && (
+            <div>
+              <span className="font-semibold text-zinc-800 text-sm block mb-1">Required Skills:</span>
+              <div className="flex flex-wrap gap-2">
+                {reqs.required_skills.map((skill: string, i: number) => (
+                  <span key={i} className="px-2.5 py-1 bg-zinc-100 text-zinc-700 text-xs rounded-md border border-zinc-200">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    return <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{JSON.stringify(reqs, null, 2)}</div>;
+  };
+
+  const renderTextContent = (content: any) => {
+    if (!content) return null;
+    if (typeof content === "string") {
+      return <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{content}</div>;
+    }
+    if (Array.isArray(content)) {
+      return (
+        <ul className="list-disc pl-5 space-y-2 text-zinc-600 text-sm leading-relaxed">
+          {content.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      );
+    }
+    if (typeof content === "object" && content.raw) {
+      return <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{content.raw}</div>;
+    }
+    return <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{JSON.stringify(content, null, 2)}</div>;
+  };
+
   const selected = jobs.find((j) => j.id === selectedId) ?? null;
 
   return (
@@ -117,62 +176,51 @@ function JobBoardContent() {
           </div>
         ) : (
           <div className="mx-auto max-w-2xl bg-white p-8 rounded-xl shadow-sm border border-zinc-200">
-            <h1 className="text-2xl font-bold text-zinc-900">{selected.title}</h1>
-            <p className="mt-1 text-zinc-500">{selected.org_name}</p>
+            <div className="flex justify-between items-start mb-1">
+              <h1 className="text-2xl font-bold text-zinc-900">{selected.title}</h1>
+              {selected.salary_min && selected.salary_max && (
+                <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm">
+                  <span className="text-emerald-700 font-semibold text-sm">
+                    ${selected.salary_min.toLocaleString()} - ${selected.salary_max.toLocaleString()} <span className="text-emerald-600 font-medium text-xs">{selected.currency}</span>
+                  </span>
+                </div>
+              )}
+            </div>
+            <p className="text-zinc-500">{selected.org_name}</p>
             
-            <div className="mt-8 space-y-6">
+            <div className="mt-8 space-y-8">
               {selected.company_description && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">About the Company</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
-                    {typeof selected.company_description === 'string' 
-                      ? selected.company_description 
-                      : JSON.stringify(selected.company_description, null, 2)}
-                  </div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">About the Company</h3>
+                  {renderTextContent(selected.company_description)}
                 </div>
               )}
               
               {selected.key_responsibilities && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">Key Responsibilities</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
-                    {typeof selected.key_responsibilities === 'string' 
-                      ? selected.key_responsibilities 
-                      : JSON.stringify(selected.key_responsibilities, null, 2)}
-                  </div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Key Responsibilities</h3>
+                  {renderTextContent(selected.key_responsibilities)}
                 </div>
               )}
               
               {selected.expectations && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">What We Expect</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
-                    {typeof selected.expectations === 'string' 
-                      ? selected.expectations 
-                      : JSON.stringify(selected.expectations, null, 2)}
-                  </div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">What We Expect</h3>
+                  {renderTextContent(selected.expectations)}
                 </div>
               )}
               
               {selected.requirements && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">Requirements</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
-                    {typeof selected.requirements === 'string' 
-                      ? selected.requirements 
-                      : JSON.stringify(selected.requirements, null, 2)}
-                  </div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Requirements</h3>
+                  {renderRequirements(selected.requirements)}
                 </div>
               )}
               
               {selected.benefits && (
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 mb-2">Benefits</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
-                    {typeof selected.benefits === 'string' 
-                      ? selected.benefits 
-                      : JSON.stringify(selected.benefits, null, 2)}
-                  </div>
+                  <h3 className="text-lg font-semibold text-zinc-900 mb-3 border-b border-zinc-100 pb-2">Benefits</h3>
+                  {renderTextContent(selected.benefits)}
                 </div>
               )}
               
