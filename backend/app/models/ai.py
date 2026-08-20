@@ -60,7 +60,14 @@ class JobMatch(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     job_id = Column(GUID(), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
     candidate_id = Column(GUID(), ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
-    match_pct = Column(Integer, nullable=False)
+    
+    skill_overlap_pct = Column(Float, nullable=False, default=0.0)
+    experience_semantic_pct = Column(Float, nullable=False, default=0.0)
+    title_relevance_pct = Column(Float, nullable=False, default=0.0)
+    years_fit = Column(Float, nullable=False, default=1.0)
+    composite_score = Column(Float, nullable=False, default=0.0)
+    flags = Column(JSONType, nullable=False, default=list)
+
     matched_skills = Column(JSONType, nullable=False, default=list)
     missing_skills = Column(JSONType, nullable=False, default=list)
     ai_explanation = Column(String, nullable=True)

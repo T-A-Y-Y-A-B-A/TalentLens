@@ -20,7 +20,8 @@ type JobRead = components["schemas"]["JobRead"];
 type MatchResult = {
   candidate_id: string;
   job_id: string;
-  match_pct: number;
+  composite_score: number;
+  flags: string[];
   missing_skills: string[];
   strengths: string[];
   weaknesses: string[];
@@ -336,7 +337,12 @@ export default function CandidateDetailPage() {
                         <div className="flex items-center gap-2">
                           <Sparkles className="h-5 w-5 text-indigo-500" />
                           <h3 className="text-lg font-semibold text-indigo-900">
-                            AI Match Score: {match.match_pct}%
+                            AI Match Score: {match.composite_score}%
+                            {match.flags?.map(flag => (
+                              <span key={flag} className="ml-2 text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                {flag}
+                              </span>
+                            ))}
                           </h3>
                         </div>
                         

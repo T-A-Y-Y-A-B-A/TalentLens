@@ -87,7 +87,7 @@ async def get_application_match_result(
     return {
         "candidate_id": str(match.candidate_id),
         "job_id": str(match.job_id),
-        "match_pct": match.match_pct,
+        "match_pct": match.composite_score,
         "missing_skills": match.missing_skills,
         "strengths": match.strengths,
         "weaknesses": match.weaknesses,

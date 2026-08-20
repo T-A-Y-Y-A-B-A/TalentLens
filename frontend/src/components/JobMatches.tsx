@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 
 interface MatchResult {
   candidate_id: string;
-  match_pct: number;
+  composite_score: number;
+  flags: string[];
   missing_skills: string[];
   strengths: string[];
   weaknesses: string[];
@@ -138,7 +139,8 @@ export function JobMatches({ jobId }: { jobId: string }) {
         if (m.candidate_id === candidateId) {
           return {
             ...m,
-            match_pct: newMatchData.match_pct,
+            composite_score: newMatchData.composite_score,
+            flags: newMatchData.flags,
             missing_skills: newMatchData.missing_skills,
             strengths: newMatchData.strengths,
             weaknesses: newMatchData.weaknesses,
@@ -222,7 +224,7 @@ export function JobMatches({ jobId }: { jobId: string }) {
       ) : (
         <div className="space-y-4">
           {matches.map((match, index) => {
-            const isTopTier = match.match_pct >= 90;
+            const isTopTier = match.composite_score >= 90;
             const isExpanded = !!expandedCards[match.candidate_id];
             
             return (
@@ -252,7 +254,14 @@ export function JobMatches({ jobId }: { jobId: string }) {
                       isTopTier ? "bg-indigo-100/70 text-indigo-700" : "bg-zinc-100 text-zinc-700"
                     }`}>
                       {isTopTier && <Sparkles size={12} />} 
-                      {Math.round(match.match_pct)}% Match
+                      <div className="flex items-center gap-2">
+                        <span>{Math.round(match.composite_score)}% Match</span>
+                        {match.flags?.map(flag => (
+                          <span key={flag} className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                            {flag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
 

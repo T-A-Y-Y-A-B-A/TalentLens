@@ -98,60 +98,12 @@ async def async_parse_resume(resume_id: str):
             db.add(parsed_data)
             
             # 4. Generate Embeddings & Upsert to Qdrant
-            # We embed the whole extracted text or structured summary
-            # For simplicity, embed a concatenated summary of the structured data
-            text_to_embed = f"Skills: {', '.join(structured_data.skills)}\n"
-            for exp in structured_data.experience:
-                text_to_embed += f"Experience: {exp.title} at {exp.company}\n"
-            
-            # Embed the text (dense)
-            loop = asyncio.get_event_loop()
-            dense_vector = await loop.run_in_executor(None, embed_text, text_to_embed)
-            
-            # Generate Sparse Vector
-            def embed_sparse():
-                from app.services.matching import get_sparse_model
-                model = get_sparse_model()
-                return list(model.embed([text_to_embed]))[0]
-                
-            sparse_dict = await loop.run_in_executor(None, embed_sparse)
-            sparse_vector = {
-                "indices": sparse_dict.indices.tolist(),
-                "values": sparse_dict.values.tolist()
-            }
-            
-            # Save embedding metadata
-            point_id = str(uuid.uuid4())
-            emb_record = CandidateEmbedding(
-                candidate_id=resume.candidate_id,
-                qdrant_point_id=point_id,
-                model_version=EMBEDDING_MODEL_NAME
-            )
-            # Use merge to handle potential upserts if candidate already has embedding
-            await db.merge(emb_record)
-            
-            # Upload to Qdrant
-            # Get candidate's org_id
             from app.models.candidate import Candidate
             cand_result = await db.execute(select(Candidate).where(Candidate.id == resume.candidate_id))
             candidate = cand_result.scalars().first()
             
-            await qdrant_client.upsert(
-                collection_name="candidates",
-                points=[
-                    PointStruct(
-                        id=point_id,
-                        vector={
-                            "dense": dense_vector,
-                            "sparse": sparse_vector
-                        },
-                        payload={
-                            "candidate_id": str(candidate.id),
-                            "skills": structured_data.skills
-                        }
-                    )
-                ]
-            )
+            from app.services.matching import compute_candidate_embeddings
+            await compute_candidate_embeddings(db, candidate, parsed_data)
             
             # 5. Mark as DONE
             resume.parse_status = ParseStatus.DONE

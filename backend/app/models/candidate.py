@@ -59,6 +59,34 @@ class ResumeParsedData(Base, TimestampMixin):
     projects = Column(JSONType(), default=[])
     
     resume = relationship("Resume", back_populates="parsed_data")
+    
+    @property
+    def total_years_experience(self) -> float | None:
+        years = 0.0
+        has_dates = False
+        from datetime import datetime
+        import re
+        for exp in (self.experience or []):
+            start_date = exp.get("start_date")
+            end_date = exp.get("end_date")
+            if not start_date or not end_date:
+                continue
+            
+            def extract_year(date_str: str) -> int | None:
+                if date_str.lower() in ("present", "current", "now"):
+                    return datetime.utcnow().year
+                match = re.search(r'\b(19|20)\d{2}\b', date_str)
+                if match:
+                    return int(match.group(0))
+                return None
+                
+            start_yr = extract_year(start_date)
+            end_yr = extract_year(end_date)
+            
+            if start_yr and end_yr and end_yr >= start_yr:
+                years += (end_yr - start_yr)
+                has_dates = True
+        return years if has_dates else None
 
 class CandidateEmbedding(Base, TimestampMixin):
     __tablename__ = "candidate_embeddings"
@@ -66,3 +94,4 @@ class CandidateEmbedding(Base, TimestampMixin):
     candidate_id = Column(GUID(), ForeignKey("candidates.id"), primary_key=True)
     qdrant_point_id = Column(String, nullable=False)
     model_version = Column(String, nullable=False)
+    section_hash = Column(String, nullable=True)

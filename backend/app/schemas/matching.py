@@ -4,7 +4,8 @@ from uuid import UUID
 
 class JobMatchResponse(BaseModel):
     candidate_id: UUID
-    match_pct: float
+    composite_score: float
+    flags: List[str]
     missing_skills: List[str]
     strengths: Optional[List[str]] = None
     weaknesses: Optional[List[str]] = None

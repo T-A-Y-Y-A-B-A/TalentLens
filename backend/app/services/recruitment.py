@@ -190,6 +190,9 @@ async def create_job(db: AsyncSession, obj_in: JobCreate, current_user: User) ->
     )
     final_job = result.scalars().first()
     
+    from app.services.matching import compute_job_embeddings
+    await compute_job_embeddings(db, final_job)
+    
     from app.workers.tasks.keyword_matching import match_job_to_all_candidates
     match_job_to_all_candidates.delay(str(final_job.id))
     
@@ -233,6 +236,9 @@ async def update_job(db: AsyncSession, job_id: UUID, obj_in: JobUpdate, current_
         .where(Job.id == db_obj.id)
     )
     final_job = result.scalars().first()
+    
+    from app.services.matching import compute_job_embeddings
+    await compute_job_embeddings(db, final_job)
     
     from app.workers.tasks.keyword_matching import match_job_to_all_candidates
     match_job_to_all_candidates.delay(str(final_job.id))
@@ -384,7 +390,7 @@ async def get_job_board(
     total_count = await db.scalar(count_stmt) or 0
     
     if sort_by_match and candidate_id:
-        stmt = stmt.order_by(JobMatch.match_pct.desc().nulls_last())
+        stmt = stmt.order_by(JobMatch.composite_score.desc().nulls_last())
     else:
         stmt = stmt.order_by(Job.created_at.desc())
         
@@ -406,7 +412,8 @@ async def get_job_board(
                 salary_max=job.salary_max,
                 currency=job.currency,
                 salary_period=job.salary_period,
-                match_pct=match.match_pct if match else None,
+                composite_score=match.composite_score if match else None,
+                flags=match.flags if match else None,
                 matched_skills=match.matched_skills if match else None,
                 missing_skills=match.missing_skills if match else None,
                 posted_at=job.created_at

@@ -429,7 +429,7 @@ async def get_candidate_jobs(
         
     from sqlalchemy import and_, func
     stmt = (
-        select(Job, JobMatch.match_pct, JobMatch.matched_skills, JobMatch.missing_skills, Organization.name.label("organization_name"))
+        select(Job, JobMatch.composite_score, JobMatch.matched_skills, JobMatch.missing_skills, Organization.name.label("organization_name"))
         .options(joinedload(Job.department))
         .join(Organization, Organization.id == Job.org_id)
         .join(
@@ -437,12 +437,12 @@ async def get_candidate_jobs(
             and_(
                 JobMatch.job_id == Job.id, 
                 JobMatch.candidate_id == current_candidate.id,
-                JobMatch.match_pct >= 35
+                JobMatch.composite_score >= 35
             )
         )
         .where(Job.status == JobStatus.OPEN)
         .where(Job.deleted_at.is_(None))
-        .order_by(func.coalesce(JobMatch.match_pct, 0).desc(), Job.created_at.desc())
+        .order_by(func.coalesce(JobMatch.composite_score, 0).desc(), Job.created_at.desc())
     )
     
     if org_id:

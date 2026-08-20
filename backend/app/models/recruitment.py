@@ -65,3 +65,4 @@ class JobEmbedding(Base, TimestampMixin):
     job_id = Column(GUID(), ForeignKey("jobs.id"), primary_key=True)
     qdrant_point_id = Column(String, nullable=False)
     model_version = Column(String, nullable=False)
+    section_hash = Column(String, nullable=True)

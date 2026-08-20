@@ -131,7 +131,8 @@ class JobBoardCard(BaseModel):
     salary_max: int | None
     currency: str
     salary_period: str
-    match_pct: float | None      # None if candidate has no resume yet
+    composite_score: float | None      # None if candidate has no resume yet
+    flags: list[str] | None
     matched_skills: list[str] | None
     missing_skills: list[str] | None
     posted_at: datetime

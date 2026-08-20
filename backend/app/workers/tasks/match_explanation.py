@@ -18,7 +18,7 @@ async def generate_match_explanation(job_match: JobMatch, job: Job) -> str:
     You are a career coach explaining a job match to a candidate.
     Matched skills: {json.dumps(job_match.matched_skills)}
     Missing skills: {json.dumps(job_match.missing_skills)}
-    Match score: {job_match.match_pct}%
+    Match score: {job_match.composite_score}%
     Job title: {job.title}
 
     Write a short (2-3 sentence) encouraging but honest explanation of the fit,

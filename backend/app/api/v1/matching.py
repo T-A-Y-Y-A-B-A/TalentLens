@@ -82,8 +82,8 @@ async def get_job_matches(
             ),
         )
         .where(JobMatch.job_id == job_id)
-        .where(JobMatch.match_pct >= 35)
-        .order_by(JobMatch.match_pct.desc())
+        .where(JobMatch.composite_score >= 35)
+        .order_by(JobMatch.composite_score.desc())
     )
     rows = (await db.execute(stmt)).all()
     
@@ -104,7 +104,8 @@ async def get_job_matches(
     for job_match, ai_result in rows:
         results_list.append(JobMatchResponse(
             candidate_id=job_match.candidate_id,
-            match_pct=job_match.match_pct,
+            composite_score=job_match.composite_score,
+            flags=job_match.flags,
             missing_skills=job_match.missing_skills,
             strengths=ai_result.strengths if ai_result else None,
             weaknesses=ai_result.weaknesses if ai_result else None,
@@ -155,7 +156,8 @@ async def generate_on_demand_reasoning(
         if ai_tz >= jm_tz:
             return {
                 "candidate_id": str(job_match.candidate_id),
-                "match_pct": job_match.match_pct,
+                "composite_score": job_match.composite_score,
+                "flags": job_match.flags,
                 "missing_skills": job_match.missing_skills,
                 "strengths": ai_result.strengths,
                 "weaknesses": ai_result.weaknesses,
@@ -198,7 +200,8 @@ async def generate_on_demand_reasoning(
         
         return {
             "candidate_id": str(job_match.candidate_id),
-            "match_pct": job_match.match_pct,
+            "composite_score": job_match.composite_score,
+            "flags": job_match.flags,
             "missing_skills": job_match.missing_skills,
             "strengths": new_ai_result.strengths,
             "weaknesses": new_ai_result.weaknesses,

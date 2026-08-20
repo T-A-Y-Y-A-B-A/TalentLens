@@ -10,26 +10,31 @@ qdrant_client = AsyncQdrantClient(
 
 async def init_qdrant():
     client = qdrant_client
-    collections = await client.get_collections()
-    collection_names = [c.name for c in collections.collections]
     
-    if "candidates" not in collection_names:
-        # Using BGE small dimension which is 384 for dense
+    try:
         await client.create_collection(
             collection_name="candidates",
             vectors_config={"dense": VectorParams(size=384, distance=Distance.COSINE)},
-            sparse_vectors_config={"sparse": SparseVectorParams()}
         )
         await client.create_payload_index(
             collection_name="candidates",
             field_name="org_ids",
             field_schema=PayloadSchemaType.KEYWORD
         )
+    except Exception as e:
+        if "already exists" not in str(e):
+            raise
         
-    if "jobs" not in collection_names:
+    try:
         await client.create_collection(
             collection_name="jobs",
             vectors_config={"dense": VectorParams(size=384, distance=Distance.COSINE)},
-            sparse_vectors_config={"sparse": SparseVectorParams()}
         )
-
+        await client.create_payload_index(
+            collection_name="jobs",
+            field_name="org_id",
+            field_schema=PayloadSchemaType.KEYWORD
+        )
+    except Exception as e:
+        if "already exists" not in str(e):
+            raise

@@ -43,7 +43,12 @@ async def bulk_upsert_job_matches(session, rows: list[dict]):
     stmt = stmt.on_conflict_do_update(
         constraint="uq_job_candidate_match",
         set_={
-            "match_pct": stmt.excluded.match_pct,
+            "skill_overlap_pct": stmt.excluded.skill_overlap_pct,
+            "experience_semantic_pct": stmt.excluded.experience_semantic_pct,
+            "title_relevance_pct": stmt.excluded.title_relevance_pct,
+            "years_fit": stmt.excluded.years_fit,
+            "composite_score": stmt.excluded.composite_score,
+            "flags": stmt.excluded.flags,
             "matched_skills": stmt.excluded.matched_skills,
             "missing_skills": stmt.excluded.missing_skills,
             "updated_at": func.now()
@@ -64,6 +69,8 @@ async def _match_job_to_all_candidates(job_id: str):
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
     from sqlalchemy.pool import NullPool
     from app.core.config import settings
+    from app.services.matching import compute_msgc_score
+    
     engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
     async_session = async_sessionmaker(engine_local, expire_on_commit=False)
     
@@ -72,18 +79,15 @@ async def _match_job_to_all_candidates(job_id: str):
             job = await session.get(Job, UUID(job_id))
         if not job:
             return
-        
+            
         candidates_data = (await session.execute(
-            select(Candidate, ResumeParsedData.skills)
+            select(Candidate, ResumeParsedData)
             .join(Resume, Resume.candidate_id == Candidate.id)
             .join(ResumeParsedData, ResumeParsedData.resume_id == Resume.id)
-            .where(ResumeParsedData.skills != None)
             .distinct(Candidate.id)
             .order_by(Candidate.id, Resume.created_at.desc())
         )).all()
 
-        # Fetch existing JobMatch pairs for this job so pairs already
-        # matched can be refreshed even if the new score drops below threshold.
         existing_candidate_ids = set(
             (await session.execute(
                 select(JobMatch.candidate_id).where(JobMatch.job_id == job.id)
@@ -91,23 +95,29 @@ async def _match_job_to_all_candidates(job_id: str):
         )
 
         rows = []
-        for candidate, skills in candidates_data:
-            print(f"[DEBUG MATCH_JOB] Candidate ID: {candidate.id}, Skills passed in: {skills}")
-            result = compute_keyword_match(skills, job.requirements)
-            print(f"[DEBUG RESULT] Job ID: {job.id}, match_pct: {result['match_pct']}, matched: {result['matched_skills']}, missing: {result['missing_skills']}")
+        for candidate, parsed_data in candidates_data:
+            print(f"[DEBUG MSGC] Job ID: {job.id}, Candidate ID: {candidate.id}")
+            result = await compute_msgc_score(session, job, candidate, parsed_data)
+            print(f"[DEBUG MSGC] Result: {result}")
+            
             has_existing_row = candidate.id in existing_candidate_ids
-            if result["match_pct"] >= MATCH_THRESHOLD or has_existing_row:
+            # Use composite score for thresholding now
+            if result["composite_score"] >= MATCH_THRESHOLD or has_existing_row:
                 import uuid
                 rows.append({
                     "id": uuid.uuid4(),
                     "job_id": job.id,
                     "candidate_id": candidate.id,
-                    **{k: v for k, v in result.items()},
+                    **result,
+                    # Fallback empty arrays for backward schema compat if needed
+                    "matched_skills": [],
+                    "missing_skills": []
                 })
+                
         unique_rows = {}
         for row in rows:
             key = (row["job_id"], row["candidate_id"])
-            if key not in unique_rows or row["match_pct"] > unique_rows[key]["match_pct"]:
+            if key not in unique_rows or row["composite_score"] > unique_rows[key]["composite_score"]:
                 unique_rows[key] = row
         await bulk_upsert_job_matches(session, list(unique_rows.values()))
     finally:
@@ -125,31 +135,31 @@ async def _match_candidate_to_all_jobs(candidate_id: str):
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
     from sqlalchemy.pool import NullPool
     from app.core.config import settings
+    from app.services.matching import compute_msgc_score
+    
     engine_local = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
     async_session = async_sessionmaker(engine_local, expire_on_commit=False)
     
     try:
         async with async_session() as session:
             candidate_data = (await session.execute(
-            select(Candidate, ResumeParsedData.skills)
+            select(Candidate, ResumeParsedData)
             .join(Resume, Resume.candidate_id == Candidate.id)
             .join(ResumeParsedData, ResumeParsedData.resume_id == Resume.id)
             .where(Candidate.id == UUID(candidate_id))
-            .where(ResumeParsedData.skills != None)
             .order_by(Resume.created_at.desc())
         )).first()
         
         if not candidate_data:
             return
             
-        candidate, skills = candidate_data
+        candidate, parsed_data = candidate_data
         
+        # NOTE: Ideally we'd only select jobs that are OPEN, but we do that here
         jobs = (await session.execute(
             select(Job).where(Job.status == JobStatus.OPEN, Job.deleted_at.is_(None))
         )).scalars().all()
 
-        # Fetch existing JobMatch pairs for this candidate so we know which
-        # pairs are allowed to be refreshed even when below threshold.
         existing_job_ids = set(
             (await session.execute(
                 select(JobMatch.job_id).where(JobMatch.candidate_id == candidate.id)
@@ -158,22 +168,26 @@ async def _match_candidate_to_all_jobs(candidate_id: str):
 
         rows = []
         for job in jobs:
-            print(f"[DEBUG MATCH_CANDIDATE] Job ID: {job.id}, Skills passed in: {skills}")
-            result = compute_keyword_match(skills, job.requirements)
-            print(f"[DEBUG RESULT] Job ID: {job.id}, match_pct: {result['match_pct']}, matched: {result['matched_skills']}, missing: {result['missing_skills']}")
+            print(f"[DEBUG MSGC] Job ID: {job.id}, Candidate ID: {candidate.id}")
+            result = await compute_msgc_score(session, job, candidate, parsed_data)
+            print(f"[DEBUG MSGC] Result: {result}")
+            
             has_existing_row = job.id in existing_job_ids
-            if result["match_pct"] >= MATCH_THRESHOLD or has_existing_row:
+            if result["composite_score"] >= MATCH_THRESHOLD or has_existing_row:
                 import uuid
                 rows.append({
                     "id": uuid.uuid4(),
                     "job_id": job.id,
                     "candidate_id": candidate.id,
-                    **{k: v for k, v in result.items()},
+                    **result,
+                    "matched_skills": [],
+                    "missing_skills": []
                 })
+                
         unique_rows = {}
         for row in rows:
             key = (row["job_id"], row["candidate_id"])
-            if key not in unique_rows or row["match_pct"] > unique_rows[key]["match_pct"]:
+            if key not in unique_rows or row["composite_score"] > unique_rows[key]["composite_score"]:
                 unique_rows[key] = row
         await bulk_upsert_job_matches(session, list(unique_rows.values()))
     finally:
