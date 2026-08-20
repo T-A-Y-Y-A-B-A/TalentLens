@@ -68,9 +68,9 @@ class JobBase(BaseModel):
     department_id: Optional[UUID] = None
     salary_range: Optional[str] = None
     company_description: Optional[str] = None
-    key_responsibilities: Optional[List[str]] = Field(default_factory=list)
-    expectations: Optional[List[str]] = Field(default_factory=list)
-    benefits: Optional[List[str]] = Field(default_factory=list)
+    key_responsibilities: Any = Field(default_factory=list)
+    expectations: Any = Field(default_factory=list)
+    benefits: Any = Field(default_factory=list)
 
 class JobCreate(JobBase):
     salary_min: int = Field(..., gt=0)
@@ -138,11 +138,11 @@ class JobBoardCard(BaseModel):
     posted_at: datetime
     
     # JD details
-    key_responsibilities: str | None = None
-    expectations: str | None = None
+    key_responsibilities: str | list | dict | None = None
+    expectations: str | list | dict | None = None
     requirements: dict | list | str | None = None
-    benefits: str | None = None
-    company_description: str | None = None
+    benefits: str | list | dict | None = None
+    company_description: str | list | dict | None = None
 
 class JobBoardResponse(BaseModel):
     jobs: list[JobBoardCard]
