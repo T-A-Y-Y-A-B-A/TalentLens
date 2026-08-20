@@ -124,21 +124,33 @@ function JobBoardContent() {
               {selected.company_description && (
                 <div>
                   <h3 className="text-lg font-semibold text-zinc-900 mb-2">About the Company</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.company_description}</div>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
+                    {typeof selected.company_description === 'string' 
+                      ? selected.company_description 
+                      : JSON.stringify(selected.company_description, null, 2)}
+                  </div>
                 </div>
               )}
               
               {selected.key_responsibilities && (
                 <div>
                   <h3 className="text-lg font-semibold text-zinc-900 mb-2">Key Responsibilities</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.key_responsibilities}</div>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
+                    {typeof selected.key_responsibilities === 'string' 
+                      ? selected.key_responsibilities 
+                      : JSON.stringify(selected.key_responsibilities, null, 2)}
+                  </div>
                 </div>
               )}
               
               {selected.expectations && (
                 <div>
                   <h3 className="text-lg font-semibold text-zinc-900 mb-2">What We Expect</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.expectations}</div>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
+                    {typeof selected.expectations === 'string' 
+                      ? selected.expectations 
+                      : JSON.stringify(selected.expectations, null, 2)}
+                  </div>
                 </div>
               )}
               
@@ -156,7 +168,11 @@ function JobBoardContent() {
               {selected.benefits && (
                 <div>
                   <h3 className="text-lg font-semibold text-zinc-900 mb-2">Benefits</h3>
-                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">{selected.benefits}</div>
+                  <div className="text-zinc-600 text-sm leading-relaxed whitespace-pre-wrap">
+                    {typeof selected.benefits === 'string' 
+                      ? selected.benefits 
+                      : JSON.stringify(selected.benefits, null, 2)}
+                  </div>
                 </div>
               )}
               
