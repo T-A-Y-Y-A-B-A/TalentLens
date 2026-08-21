@@ -175,7 +175,7 @@ export default function LoginPage() {
               Password
             </Label>
             <Link
-              href="/forgot-password"
+              href="/password-reset/request"
               className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
               tabIndex={-1}
             >

@@ -43,7 +43,6 @@ function Navbar() {
     { name: 'Product', href: '#product' },
     { name: 'How it Works', href: '#how-it-works' },
     { name: 'Pricing', href: '#pricing' },
-    { name: 'For Candidates', href: '/portal/login' },
   ];
 
   return (
@@ -69,11 +68,8 @@ function Navbar() {
 
         <div className="hidden md:flex items-center gap-4">
           <Link href="/login">
-            <Button variant="ghost" className="font-semibold rounded-xl">HR Sign In</Button>
-          </Link>
-          <Link href="/portal/login">
             <Button className="bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white rounded-xl font-semibold">
-              Get Started as Candidate
+              Sign In
             </Button>
           </Link>
         </div>
@@ -98,13 +94,8 @@ function Navbar() {
                 ))}
                 <div className="flex flex-col gap-4 mt-4">
                   <Link href="/login" className="w-full">
-                    <Button variant="outline" className="w-full justify-center rounded-xl font-semibold h-12">
-                      HR Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/portal/login" className="w-full">
                     <Button className="w-full bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white justify-center rounded-xl font-semibold h-12">
-                      Get Started as Candidate
+                      Sign In
                     </Button>
                   </Link>
                 </div>
@@ -134,9 +125,9 @@ function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-            <Link href="/portal/login" className="w-full sm:w-auto">
+            <Link href="/login" className="w-full sm:w-auto">
               <Button size="lg" className="bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white rounded-xl font-semibold h-12 px-8 w-full">
-                Get Started as Candidate
+                Sign In
               </Button>
             </Link>
 
@@ -578,14 +569,9 @@ function FinalCTA() {
               Join the next generation of recruiting teams using TalentLens to uncover hidden potential and move faster than the competition.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-              <Link href="/portal/login" className="w-full sm:w-auto">
-                <Button size="lg" className="bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white rounded-xl font-bold h-14 px-10 w-full">
-                  Get Started as Candidate
-                </Button>
-              </Link>
               <Link href="/login" className="w-full sm:w-auto">
-                <Button variant="outline" size="lg" className="rounded-xl font-bold h-14 px-10 w-full border-zinc-300 text-zinc-700 hover:bg-zinc-100 bg-white">
-                  HR Sign In
+                <Button size="lg" className="bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white rounded-xl font-bold h-14 px-10 w-full">
+                  Sign In
                 </Button>
               </Link>
             </div>
@@ -627,8 +613,7 @@ function Footer() {
               <ul className="space-y-3">
                 <li><Link href="#features" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Features</Link></li>
                 <li><Link href="#pricing" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Pricing</Link></li>
-                <li><Link href="/login" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">HR Sign In</Link></li>
-                <li><Link href="/portal/login" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Candidate Portal</Link></li>
+                <li><Link href="/login" className="text-zinc-500 hover:text-indigo-600 font-medium transition-colors">Sign In</Link></li>
               </ul>
             </div>
             <div>
