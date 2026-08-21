@@ -69,11 +69,13 @@ function Navbar() {
 
         <div className="hidden md:flex items-center gap-4">
           <Link href="/login">
-            <Button variant="ghost" className="font-semibold rounded-xl">Sign In</Button>
+            <Button variant="ghost" className="font-semibold rounded-xl">HR Sign In</Button>
           </Link>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold">
-            Book a Demo
-          </Button>
+          <Link href="/portal/login">
+            <Button className="bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white rounded-xl font-semibold">
+              Get Started as Candidate
+            </Button>
+          </Link>
         </div>
 
         <div className="md:hidden">
@@ -97,12 +99,14 @@ function Navbar() {
                 <div className="flex flex-col gap-4 mt-4">
                   <Link href="/login" className="w-full">
                     <Button variant="outline" className="w-full justify-center rounded-xl font-semibold h-12">
-                      Sign In
+                      HR Sign In
                     </Button>
                   </Link>
-                  <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white justify-center rounded-xl font-semibold h-12">
-                    Book a Demo
-                  </Button>
+                  <Link href="/portal/login" className="w-full">
+                    <Button className="w-full bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white justify-center rounded-xl font-semibold h-12">
+                      Get Started as Candidate
+                    </Button>
+                  </Link>
                 </div>
               </nav>
             </SheetContent>
@@ -130,9 +134,11 @@ function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
-            <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold h-12 px-8 w-full sm:w-auto">
-              Book a Demo
-            </Button>
+            <Link href="/portal/login" className="w-full sm:w-auto">
+              <Button size="lg" className="bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white rounded-xl font-semibold h-12 px-8 w-full">
+                Get Started as Candidate
+              </Button>
+            </Link>
 
             <Dialog>
               <DialogTrigger render={<Button variant="outline" size="lg" className="rounded-xl font-semibold h-12 px-8 w-full sm:w-auto border-zinc-200 hover:bg-zinc-50 hover:text-indigo-600" />}>
@@ -572,12 +578,16 @@ function FinalCTA() {
               Join the next generation of recruiting teams using TalentLens to uncover hidden potential and move faster than the competition.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold h-14 px-10 w-full sm:w-auto">
-                Book a Demo
-              </Button>
-              <Button variant="outline" size="lg" className="rounded-xl font-bold h-14 px-10 w-full sm:w-auto border-zinc-300 text-zinc-700 hover:bg-zinc-100 bg-white">
-                Contact Us
-              </Button>
+              <Link href="/portal/login" className="w-full sm:w-auto">
+                <Button size="lg" className="bg-[var(--signal)] hover:bg-[var(--signal)]/90 text-white rounded-xl font-bold h-14 px-10 w-full">
+                  Get Started as Candidate
+                </Button>
+              </Link>
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="rounded-xl font-bold h-14 px-10 w-full border-zinc-300 text-zinc-700 hover:bg-zinc-100 bg-white">
+                  HR Sign In
+                </Button>
+              </Link>
             </div>
           </div>
 
