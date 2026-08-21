@@ -82,46 +82,46 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Analytics</h1>
-        <p className="text-gray-500 mt-1">Overview of your organization's hiring performance.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Analytics</h1>
+        <p className="text-muted-foreground mt-1">Overview of your organization's hiring performance.</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Time to Hire</p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">{data.time_to_hire_days} days</h3>
+                <p className="text-sm font-medium text-muted-foreground">Time to Hire</p>
+                <h3 className="text-2xl font-bold text-foreground mt-1 font-mono tracking-tight">{data.time_to_hire_days} <span className="font-sans text-lg font-semibold text-muted-foreground">days</span></h3>
               </div>
-              <div className="h-12 w-12 bg-blue-50 rounded-full flex items-center justify-center">
+              <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center">
                 <Timer className="h-6 w-6 text-blue-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-green-600">
+            <div className="mt-4 flex items-center text-sm text-[var(--pass)]">
               <TrendingUp className="h-4 w-4 mr-1" />
-              <span>{data.time_to_hire_trend}% faster</span>
-              <span className="text-gray-400 ml-2">vs last month</span>
+              <span className="font-mono font-medium">{data.time_to_hire_trend}%</span> <span className="ml-1">faster</span>
+              <span className="text-muted-foreground ml-2 font-sans">vs last month</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Pipeline Conversion</p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">{data.pipeline_conversion_pct}%</h3>
+                <p className="text-sm font-medium text-muted-foreground">Pipeline Conversion</p>
+                <h3 className="text-2xl font-bold text-foreground mt-1 font-mono tracking-tight">{data.pipeline_conversion_pct}%</h3>
               </div>
-              <div className="h-12 w-12 bg-indigo-50 rounded-full flex items-center justify-center">
+              <div className="h-12 w-12 bg-indigo-500/10 rounded-full flex items-center justify-center">
                 <Users className="h-6 w-6 text-indigo-600" />
               </div>
             </div>
-            <div className="mt-4 flex items-center text-sm text-green-600">
+            <div className="mt-4 flex items-center text-sm text-[var(--pass)]">
               <TrendingUp className="h-4 w-4 mr-1" />
-              <span>{data.pipeline_conversion_trend}% increase</span>
-              <span className="text-gray-400 ml-2">vs last month</span>
+              <span className="font-mono font-medium">{data.pipeline_conversion_trend}%</span> <span className="ml-1">increase</span>
+              <span className="text-muted-foreground ml-2 font-sans">vs last month</span>
             </div>
           </CardContent>
         </Card>
@@ -129,18 +129,18 @@ export default function AnalyticsPage() {
 
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-6 border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Active Jobs</p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">{data.active_jobs_count}</h3>
+                <p className="text-sm font-medium text-muted-foreground">Active Jobs</p>
+                <h3 className="text-2xl font-bold text-foreground mt-1 font-mono tracking-tight">{data.active_jobs_count}</h3>
               </div>
-              <div className="h-12 w-12 bg-amber-50 rounded-full flex items-center justify-center">
+              <div className="h-12 w-12 bg-amber-500/10 rounded-full flex items-center justify-center">
                 <Building className="h-6 w-6 text-amber-600" />
               </div>
             </div>
-            <div className="mt-4 text-sm text-gray-500">
-              Across {data.active_jobs_depts} departments
+            <div className="mt-4 text-sm text-muted-foreground">
+              Across <span className="font-mono font-medium text-foreground">{data.active_jobs_depts}</span> departments
             </div>
           </CardContent>
         </Card>

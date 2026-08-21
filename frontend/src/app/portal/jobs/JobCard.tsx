@@ -1,6 +1,7 @@
 "use client";
 
 import { Sparkles, MapPin, Building, Clock, Briefcase } from "lucide-react";
+import { MatchGateBar } from "@/components/ui/match-gate-bar";
 
 export type JobCardData = {
   id: string;
@@ -42,28 +43,38 @@ export function JobCard({
       onClick={() => onSelect(job.id)}
       className={`cursor-pointer rounded-xl border p-4 transition-all duration-300 ${
         isSelected
-          ? "border-indigo-500 bg-indigo-50/50 shadow-sm shadow-indigo-500/10"
-          : "border-zinc-200 bg-white hover:-translate-y-1 hover:border-zinc-300 hover:shadow-md"
+          ? "border-primary bg-[var(--signal-light)] shadow-sm shadow-primary/10"
+          : "border-border bg-card hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
       }`}
     >
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-zinc-900">{job.title}</h3>
-          <p className="text-sm text-zinc-500">{job.org_name}</p>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-foreground">{job.title}</h3>
+          <p className="text-sm text-muted-foreground">{job.org_name}</p>
         </div>
-        {job.composite_score !== null && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-blue-400 border border-blue-500/20">
-            <Sparkles className="h-3 w-3" /> {Math.round(job.composite_score)}% Match
+        
+        <div className="flex flex-col gap-2 shrink-0 ml-4 items-end w-32">
+          {job.composite_score !== null && (
+            <MatchGateBar overallScore={Math.round(job.composite_score)} gateThreshold={75} />
+          )}
+          
+          <div className="flex flex-col gap-1 items-end">
+            {job.flags && job.flags.map(flag => {
+              const label = flag === 'low_relevant_experience' ? 'Low Relevant Experience' :
+                            flag === 'title_mismatch' ? 'Title Mismatch' :
+                            flag === 'incomplete_jd_data' ? 'Incomplete JD Data' :
+                            flag.replace(/_/g, ' ');
+              return (
+                <div key={flag} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide bg-[var(--gate)]/10 text-[var(--gate)] border border-[var(--gate)]/20">
+                  {label}
+                </div>
+              );
+            })}
           </div>
-        )}
-        {job.flags && job.flags.map(flag => (
-          <div key={flag} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
-            {flag}
-          </div>
-        ))}
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-500">
+      <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <MapPin className="h-3 w-3" /> {job.location || "Remote"}
         </span>

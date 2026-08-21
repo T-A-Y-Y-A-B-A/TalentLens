@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { JobCard, JobCardData } from "./JobCard";
 import { FilterBar, JobBoardFilters } from "./FilterBar";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { MatchGateBar } from "@/components/ui/match-gate-bar";
 
 const DEFAULT_FILTERS: JobBoardFilters = {
   search: "",
@@ -137,9 +138,9 @@ function JobBoardContent() {
   const selected = jobs.find((j) => j.id === selectedId) ?? null;
 
   return (
-    <div className="flex h-screen bg-zinc-50">
+    <div className="flex h-screen bg-background">
       {/* Left: filterable list */}
-      <div className="flex w-full max-w-md flex-col border-r border-zinc-200 bg-white lg:max-w-lg">
+      <div className="flex w-full max-w-md flex-col border-r border-border bg-card lg:max-w-lg">
         <FilterBar
           filters={filters}
           onChange={setFilters}
@@ -148,10 +149,10 @@ function JobBoardContent() {
         />
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {loading && (
-            <div className="py-12 text-center text-sm text-zinc-500">Loading roles...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading roles...</div>
           )}
           {!loading && jobs.length === 0 && (
-            <div className="py-12 text-center text-sm text-zinc-500">
+            <div className="py-12 text-center text-sm text-muted-foreground">
               No roles match your filters yet — try widening your search.
             </div>
           )}
@@ -169,24 +170,24 @@ function JobBoardContent() {
       </div>
 
       {/* Right: detail pane */}
-      <div className="hidden flex-1 overflow-y-auto p-8 bg-zinc-50 lg:block">
+      <div className="hidden flex-1 overflow-y-auto p-8 bg-background lg:block">
         {!selected ? (
-          <div className="flex h-full items-center justify-center text-zinc-500">
+          <div className="flex h-full items-center justify-center text-muted-foreground">
             Select a role to see full details
           </div>
         ) : (
-          <div className="mx-auto max-w-4xl bg-white p-10 rounded-2xl shadow-sm border border-zinc-200">
+          <div className="mx-auto max-w-4xl bg-card p-10 rounded-2xl shadow-sm border border-border">
             <div className="flex justify-between items-start mb-2">
-              <h1 className="text-3xl font-bold text-zinc-900">{selected.title}</h1>
+              <h1 className="text-3xl font-bold text-foreground">{selected.title}</h1>
               {selected.salary_min && selected.salary_max && (
-                <div className="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm">
-                  <span className="text-emerald-700 font-bold text-sm">
-                    ${selected.salary_min.toLocaleString()} - ${selected.salary_max.toLocaleString()} <span className="text-emerald-600 font-medium text-xs">{selected.currency}</span>
+                <div className="px-4 py-2 bg-accent border border-border rounded-lg shadow-sm">
+                  <span className="text-primary font-bold font-mono text-sm">
+                    ${selected.salary_min.toLocaleString()} - ${selected.salary_max.toLocaleString()} <span className="text-muted-foreground font-medium text-xs">{selected.currency}</span>
                   </span>
                 </div>
               )}
             </div>
-            <p className="text-lg text-zinc-500 mb-8">{selected.org_name}</p>
+            <p className="text-lg text-muted-foreground mb-8">{selected.org_name}</p>
             
             <div className="space-y-10">
               {selected.company_description && (
@@ -226,20 +227,20 @@ function JobBoardContent() {
 
               {/* AI Match Report Section */}
               {hasResume && selected.composite_score !== null && (
-                <div className="mt-12 pt-8 border-t-2 border-indigo-50">
-                  <div className="bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 p-8 rounded-2xl border border-indigo-100/50 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-500"></div>
+                <div className="mt-12 pt-8 border-t-2 border-border">
+                  <div className="bg-gradient-to-br from-[var(--signal-light)] to-background p-8 rounded-2xl border border-[var(--slate-light)] shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[var(--signal)]"></div>
                     
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                      </div>
-                      <h3 className="text-2xl font-bold text-zinc-900">AI Match Analysis</h3>
-                      <div className="ml-auto flex items-center gap-2">
-                        <span className="text-sm font-medium text-zinc-500">Overall Fit</span>
-                        <div className="px-4 py-1.5 bg-indigo-600 text-white font-bold rounded-full text-lg shadow-sm">
-                          {Math.round(selected.composite_score)}%
+                    <div className="flex flex-col mb-6 gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[var(--signal-light)] rounded-lg text-[var(--signal)]">
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                         </div>
+                        <h3 className="text-2xl font-bold text-foreground">AI Match Analysis</h3>
+                      </div>
+                      
+                      <div className="mt-4 max-w-sm">
+                        <MatchGateBar overallScore={Math.round(selected.composite_score)} gateThreshold={75} />
                       </div>
                     </div>
 

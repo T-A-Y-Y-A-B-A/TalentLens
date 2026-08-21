@@ -39,45 +39,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
+import { MatchGateBar } from "@/components/ui/match-gate-bar";
 
 // ---------------------------------------------------------------------------
-// Score Gauge
+// Score Gauge removed (replaced by MatchGateBar)
 // ---------------------------------------------------------------------------
 
-function ScoreGauge({ score }: { score: number }) {
-  const pct = Math.round((score / 10) * 100);
-  const color =
-    score >= 8 ? "#10b981" : score >= 6 ? "#6366f1" : score >= 4 ? "#f59e0b" : "#ef4444";
 
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (pct / 100) * circumference;
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width="96" height="96" viewBox="0 0 96 96">
-        <circle cx="48" cy="48" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="8" />
-        <circle
-          cx="48"
-          cy="48"
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth="8"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform="rotate(-90 48 48)"
-          style={{ transition: "stroke-dashoffset 0.6s ease" }}
-        />
-        <text x="48" y="53" textAnchor="middle" fontSize="18" fontWeight="bold" fill={color}>
-          {score.toFixed(1)}
-        </text>
-      </svg>
-      <span className="text-xs text-gray-500 font-medium">out of 10</span>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Recommendation Badge
@@ -543,7 +511,9 @@ export default function InterviewDetailPage() {
                 <div className="space-y-6">
                   {/* Score & Recommendation */}
                   <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <ScoreGauge score={interview.feedback.overall_score || 0} />
+                    <div className="w-32 shrink-0">
+                      <MatchGateBar overallScore={Math.round((interview.feedback.overall_score || 0) * 10)} gateThreshold={70} />
+                    </div>
                     <div className="space-y-1">
                       <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Recommendation</p>
                       <RecommendationBadge value={interview.feedback.ai_recommendation || "Hire"} />

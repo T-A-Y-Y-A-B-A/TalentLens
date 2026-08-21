@@ -67,22 +67,22 @@ export default function DashboardOverviewPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-heading">
             Welcome back, {displayName}
           </h1>
-          <p className="text-gray-500 mt-1 text-sm">
+          <p className="text-muted-foreground mt-1 text-sm">
             Here&apos;s what&apos;s happening in your organization today.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="inline-block h-2 w-2 rounded-full bg-[var(--pass)] animate-pulse" />
           Live data · {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </div>
       </div>
 
       {/* Stats Error Banner */}
       {statsError && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>Could not load stats: {statsError}</span>
         </div>
@@ -94,9 +94,9 @@ export default function DashboardOverviewPage() {
           label="Active Jobs"
           value={stats?.active_jobs}
           loading={statsLoading}
-          icon={<Briefcase className="h-5 w-5 text-indigo-600" />}
-          iconBg="bg-indigo-50"
-          border="border-indigo-100"
+          icon={<Briefcase className="h-5 w-5 text-primary" />}
+          iconBg="bg-accent"
+          border="border-border"
           description="Currently open positions"
           href="/dashboard/jobs"
         />
@@ -104,9 +104,9 @@ export default function DashboardOverviewPage() {
           label="Total Candidates"
           value={stats?.total_candidates}
           loading={statsLoading}
-          icon={<Users className="h-5 w-5 text-emerald-600" />}
-          iconBg="bg-emerald-50"
-          border="border-emerald-100"
+          icon={<Users className="h-5 w-5 text-primary" />}
+          iconBg="bg-accent"
+          border="border-border"
           description="Applied to your org"
           href="/dashboard/candidates"
         />
@@ -114,9 +114,9 @@ export default function DashboardOverviewPage() {
           label="Interviews Today"
           value={stats?.interviews_today}
           loading={statsLoading}
-          icon={<Clock className="h-5 w-5 text-amber-600" />}
-          iconBg="bg-amber-50"
-          border="border-amber-100"
+          icon={<Clock className="h-5 w-5 text-primary" />}
+          iconBg="bg-accent"
+          border="border-border"
           description="Scheduled for today (UTC)"
           href="/dashboard/interviews"
         />
@@ -124,9 +124,9 @@ export default function DashboardOverviewPage() {
           label="New Applications"
           value={stats?.new_applications_24h}
           loading={statsLoading}
-          icon={<TrendingUp className="h-5 w-5 text-violet-600" />}
-          iconBg="bg-violet-50"
-          border="border-violet-100"
+          icon={<TrendingUp className="h-5 w-5 text-primary" />}
+          iconBg="bg-accent"
+          border="border-border"
           description="In the last 24 hours"
           href="/dashboard/candidates"
         />
@@ -135,30 +135,30 @@ export default function DashboardOverviewPage() {
       {/* Quick Actions */}
       {user?.role !== "interviewer" && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Quick Actions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <QuickActionCard
               href="/dashboard/jobs/new"
-              icon={<Briefcase className="h-6 w-6 text-indigo-600" />}
-              iconBg="bg-indigo-50"
+              icon={<Briefcase className="h-6 w-6 text-primary" />}
+              iconBg="bg-accent"
               title="Create New Job"
               description="Post a new open position with a custom pipeline"
             />
             {user?.role === "hr_manager" && (
               <QuickActionCard
                 href="/dashboard/invite-member"
-                icon={<UserPlus className="h-6 w-6 text-emerald-600" />}
-                iconBg="bg-emerald-50"
+                icon={<UserPlus className="h-6 w-6 text-primary" />}
+                iconBg="bg-accent"
                 title="Invite Team Member"
                 description="Send a signed invite link to a recruiter or interviewer"
               />
             )}
             <QuickActionCard
               href="/dashboard/copilot"
-              icon={<Sparkles className="h-6 w-6 text-violet-600" />}
-              iconBg="bg-violet-50"
+              icon={<Sparkles className="h-6 w-6 text-primary" />}
+              iconBg="bg-accent"
               title="AI Candidate Search"
               description="Semantic search across your candidate pool with AI"
             />
@@ -198,19 +198,19 @@ function StatCard({
         <CardContent className="p-5">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 {label}
               </p>
               <div className="mt-2">
                 {loading ? (
-                  <div className="h-8 w-16 rounded bg-gray-100 animate-pulse" />
+                  <div className="h-8 w-16 rounded bg-secondary animate-pulse" />
                 ) : (
-                  <p className="text-3xl font-bold text-gray-900 tabular-nums">
+                  <p className="text-3xl font-bold font-mono text-foreground tabular-nums">
                     {value?.toLocaleString() ?? "—"}
                   </p>
                 )}
               </div>
-              <p className="mt-1 text-xs text-gray-400">{description}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{description}</p>
             </div>
             <div
               className={`ml-3 h-10 w-10 flex-shrink-0 ${iconBg} rounded-xl flex items-center justify-center`}
@@ -238,8 +238,8 @@ function QuickActionCard({
   description: string;
 }) {
   return (
-    <Link href={href} className="group block">
-      <Card className="border border-gray-100 shadow-sm transition-all duration-200 group-hover:shadow-md group-hover:-translate-y-0.5 group-hover:border-gray-200 h-full">
+    <Link href={href} className="group block h-full">
+      <Card className="border border-border shadow-sm transition-all duration-200 group-hover:shadow-md group-hover:-translate-y-0.5 group-hover:border-primary/50 h-full">
         <CardContent className="p-5 flex items-start gap-4 h-full">
           <div
             className={`${iconBg} h-11 w-11 flex-shrink-0 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}
@@ -247,14 +247,14 @@ function QuickActionCard({
             {icon}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 text-sm leading-tight group-hover:text-indigo-700 transition-colors duration-150">
+            <p className="font-semibold text-foreground text-sm leading-tight group-hover:text-primary transition-colors duration-150">
               {title}
             </p>
-            <p className="mt-1 text-xs text-gray-400 leading-snug">
+            <p className="mt-1 text-xs text-muted-foreground leading-snug">
               {description}
             </p>
           </div>
-          <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all duration-150 self-center flex-shrink-0" />
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-150 self-center flex-shrink-0" />
         </CardContent>
       </Card>
     </Link>

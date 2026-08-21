@@ -26,8 +26,8 @@ export default function CandidatePortalLayout({
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-zinc-50">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-foreground" />
       </div>
     );
   }
@@ -35,7 +35,7 @@ export default function CandidatePortalLayout({
   // If public route and no user, render bare layout
   if (!user && isPublicRoute) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         <main className="flex-1 w-full mx-auto">
           {children}
         </main>
@@ -50,23 +50,23 @@ export default function CandidatePortalLayout({
   const isHR = user && ["hr_manager", "hr_admin", "recruiter"].includes(user.role);
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Top Nav for Candidate */}
-      <header className="bg-white border-b border-zinc-200 h-16 sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+      <header className="bg-card border-b border-border h-16 sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-8">
           <Logo href="/portal/jobs" size="md" />
           
           <nav className="hidden md:flex items-center gap-6">
             <Link 
               href="/portal/jobs" 
-              className={`text-sm font-medium flex items-center gap-2 transition-colors ${pathname?.includes("/jobs") ? "text-indigo-600" : "text-zinc-500 hover:text-zinc-900"}`}
+              className={`text-sm font-medium flex items-center gap-2 transition-colors ${pathname?.includes("/jobs") ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
               <Briefcase className="w-4 h-4" />
               Job Board
             </Link>
             <Link 
               href="/portal/applications" 
-              className={`text-sm font-medium flex items-center gap-2 transition-colors ${pathname?.includes("/applications") ? "text-indigo-600" : "text-zinc-500 hover:text-zinc-900"}`}
+              className={`text-sm font-medium flex items-center gap-2 transition-colors ${pathname?.includes("/applications") ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
               <FileText className="w-4 h-4" />
               My Applications
@@ -79,22 +79,22 @@ export default function CandidatePortalLayout({
             <>
               <Link 
                 href="/portal/dashboard?tab=notifications" 
-                className={`text-zinc-500 hover:text-indigo-600 transition-colors mr-2 flex items-center`}
+                className={`text-muted-foreground hover:text-primary transition-colors mr-2 flex items-center`}
                 title="Notifications"
               >
                 <Bell className="w-5 h-5" />
               </Link>
               <Link 
                 href="/portal/profile" 
-                className={`text-sm font-medium flex items-center gap-2 transition-colors mr-2 ${pathname?.includes("/profile") ? "text-indigo-600" : "text-zinc-500 hover:text-zinc-900"}`}
+                className={`text-sm font-medium flex items-center gap-2 transition-colors mr-2 ${pathname?.includes("/profile") ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <UserCircle className="w-4 h-4" />
                 Profile
               </Link>
-              <div className="h-4 w-px bg-zinc-200 hidden sm:block"></div>
+              <div className="h-4 w-px bg-border hidden sm:block"></div>
               <button
                 onClick={logout}
-                className="text-zinc-500 hover:text-red-600 flex items-center text-sm font-medium transition-colors"
+                className="text-muted-foreground hover:text-destructive flex items-center text-sm font-medium transition-colors"
               >
                 <LogOut className="h-4 w-4 mr-1.5" />
                 <span className="hidden sm:inline-block">Logout</span>

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Mail, Phone, Calendar, Briefcase, FileText, ChevronLeft, Sparkles, CheckCircle, Upload, Download, Award, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { MatchGateBar } from "@/components/ui/match-gate-bar";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -334,16 +335,12 @@ export default function CandidateDetailPage() {
                   <CardContent className="p-6">
                     {match ? (
                       <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-indigo-500" />
-                          <h3 className="text-lg font-semibold text-indigo-900">
-                            AI Match Score: {match.composite_score}%
-                            {match.flags?.map(flag => (
-                              <span key={flag} className="ml-2 text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                {flag}
-                              </span>
-                            ))}
-                          </h3>
+                        <div className="flex flex-col gap-2 max-w-sm">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Sparkles className="h-5 w-5 text-indigo-500" />
+                            <h3 className="text-lg font-semibold text-indigo-900">AI Match Score</h3>
+                          </div>
+                          <MatchGateBar overallScore={Math.round(match.composite_score)} gateThreshold={75} />
                         </div>
                         
                         <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">

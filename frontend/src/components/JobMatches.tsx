@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/api/client";
 import { Loader2, Sparkles, AlertCircle, ChevronDown, ChevronUp, RefreshCw, Briefcase, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MatchGateBar } from "@/components/ui/match-gate-bar";
 
 interface MatchResult {
   candidate_id: string;
@@ -250,18 +251,29 @@ export function JobMatches({ jobId }: { jobId: string }) {
                       </p>
                       <p className="text-[14px] text-zinc-500">Candidate ID: {match.candidate_id.substring(0,8)}</p>
                     </div>
-                    <div className={`px-3 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 shadow-sm ${
-                      isTopTier ? "bg-indigo-100/70 text-indigo-700" : "bg-zinc-100 text-zinc-700"
+                    <div className={`px-4 py-3 rounded-lg text-xs font-bold shadow-sm min-w-[200px] border flex flex-col gap-2 ${
+                      isTopTier ? "bg-indigo-50 border-indigo-100" : "bg-white border-border"
                     }`}>
-                      {isTopTier && <Sparkles size={12} />} 
-                      <div className="flex items-center gap-2">
-                        <span>{Math.round(match.composite_score)}% Match</span>
-                        {match.flags?.map(flag => (
-                          <span key={flag} className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                            {flag}
-                          </span>
-                        ))}
-                      </div>
+                      <MatchGateBar 
+                        overallScore={Math.round(match.composite_score)} 
+                        gateThreshold={75}
+                      />
+                      
+                      {match.flags && match.flags.length > 0 && (
+                        <div className="flex flex-col gap-1 items-end mt-1">
+                          {match.flags.map(flag => {
+                            const label = flag === 'low_relevant_experience' ? 'Low Relevant Experience' :
+                                          flag === 'title_mismatch' ? 'Title Mismatch' :
+                                          flag === 'incomplete_jd_data' ? 'Incomplete JD Data' :
+                                          flag.replace(/_/g, ' ');
+                            return (
+                              <div key={flag} className="flex items-center px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wide bg-[var(--gate)]/10 text-[var(--gate)] border border-[var(--gate)]/20">
+                                {label}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 

@@ -114,8 +114,8 @@ export default function CandidateApplicationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">My Applications</h1>
-        <p className="text-zinc-500 mt-2">Track the status of your active job applications.</p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">My Applications</h1>
+        <p className="text-muted-foreground mt-2">Track the status of your active job applications.</p>
       </div>
 
       <Card>
@@ -127,31 +127,31 @@ export default function CandidateApplicationsPage() {
         </CardHeader>
         <CardContent>
           {applications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-zinc-200 rounded-xl bg-zinc-50/50">
-              <FileText className="h-12 w-12 text-zinc-300 mb-4" />
-              <h3 className="text-lg font-medium text-zinc-900">No applications found</h3>
-              <p className="text-zinc-500 mt-1 mb-4 text-sm max-w-sm">
+            <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-border rounded-xl bg-muted/50">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium text-foreground">No applications found</h3>
+              <p className="text-muted-foreground mt-1 mb-4 text-sm max-w-sm">
                 You haven't applied to any jobs yet. Head over to the job board to find your next opportunity.
               </p>
             </div>
           ) : (
-            <div className="rounded-md border border-zinc-200">
+            <div className="rounded-md border border-border">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-zinc-50 hover:bg-zinc-50">
-                    <TableHead className="w-[40%] text-zinc-900 font-semibold">Job Title</TableHead>
-                    <TableHead className="text-zinc-900 font-semibold">Date Applied</TableHead>
-                    <TableHead className="text-zinc-900 font-semibold">Current Status</TableHead>
-                    <TableHead className="text-right text-zinc-900 font-semibold">Actions</TableHead>
+                  <TableRow className="bg-muted hover:bg-muted">
+                    <TableHead className="w-[40%] text-foreground font-semibold">Job Title</TableHead>
+                    <TableHead className="text-foreground font-semibold">Date Applied</TableHead>
+                    <TableHead className="text-foreground font-semibold">Current Status</TableHead>
+                    <TableHead className="text-right text-foreground font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {applications.map((app) => (
                     <TableRow key={app.id}>
-                      <TableCell className="font-medium text-zinc-900">
+                      <TableCell className="font-medium text-foreground">
                         {app.job_title || "Unknown Job"}
                       </TableCell>
-                      <TableCell className="text-zinc-500">
+                      <TableCell className="text-muted-foreground">
                         {format(new Date(app.applied_at), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell>

@@ -29,8 +29,8 @@ export default function HRDashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -38,9 +38,9 @@ export default function HRDashboardLayout({
   // Basic role check - must be logged in and have valid role
   if (!user || !checkRole(["super_admin", "hr_manager", "recruiter", "interviewer"])) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 p-4 text-center">
-        <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
-        <p className="text-gray-600 mb-6">
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
+        <h1 className="text-2xl font-bold text-destructive mb-2">Access Denied</h1>
+        <p className="text-muted-foreground mb-6">
           You do not have permission to access the HR Dashboard.
         </p>
         <Button onClick={logout} variant="outline">
@@ -51,7 +51,7 @@ export default function HRDashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -62,16 +62,16 @@ export default function HRDashboardLayout({
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 transform bg-white border-r border-gray-200 transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 transform bg-card border-r border-border transition-transform duration-300 lg:static lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-16 items-center justify-center border-b border-gray-200 px-6">
+        <div className="flex h-16 items-center justify-center border-b border-border px-6">
           <Logo href="/dashboard" size="md" />
         </div>
         
         <div className="flex flex-col justify-between h-[calc(100vh-4rem)]">
-          <nav className="mt-6 px-4 space-y-1">
+          <nav className="mt-6 flex flex-col space-y-1">
             {navItems.filter((item) => {
               if (user?.role === "interviewer") {
                 return ["Dashboard", "Interviews"].includes(item.name);
@@ -86,15 +86,15 @@ export default function HRDashboardLayout({
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center rounded-md px-2 py-2 text-sm font-medium ${
+                  className={`flex items-center px-4 py-2 text-sm font-medium border-l-[3px] transition-colors ${
                     isActive
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-accent border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                   }`}
                 >
                   <item.icon
                     className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                      isActive ? "text-indigo-700" : "text-gray-400"
+                      isActive ? "text-primary" : "text-muted-foreground"
                     }`}
                   />
                   {item.name}
@@ -102,7 +102,7 @@ export default function HRDashboardLayout({
               );
             })}
             {user?.is_platform_admin && (
-              <div className="pt-4 mt-4 border-t border-gray-200">
+              <div className="pt-4 mt-4 border-t border-border px-4">
                 <Link
                   href="/admin"
                   className="flex items-center rounded-md px-2 py-2 text-sm font-bold bg-zinc-900 text-white hover:bg-zinc-800"
@@ -114,21 +114,21 @@ export default function HRDashboardLayout({
             )}
           </nav>
 
-          <div className="border-t border-gray-200 p-4">
+          <div className="border-t border-border p-4">
             <div className="flex items-center mb-4">
-              <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+              <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center text-primary font-bold">
                 {user.email.charAt(0).toUpperCase()}
               </div>
               <div className="ml-3 flex-1 overflow-hidden">
-                <p className="text-sm font-medium text-gray-700 truncate">{user.email}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role.replace("_", " ")}</p>
+                <p className="text-sm font-medium text-foreground truncate">{user.email}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user.role.replace("_", " ")}</p>
               </div>
             </div>
             <button
               onClick={logout}
-              className="flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              className="flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground"
             >
-              <LogOut className="mr-3 h-5 w-5 text-gray-400" />
+              <LogOut className="mr-3 h-5 w-5 text-muted-foreground" />
               Sign out
             </button>
           </div>
@@ -138,10 +138,10 @@ export default function HRDashboardLayout({
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Header (Mobile mainly) */}
-        <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 lg:hidden">
+        <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 sm:px-6 lg:hidden">
           <Logo href="/dashboard" size="sm" />
           <button
-            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            className="text-muted-foreground hover:text-foreground focus:outline-none"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-6 w-6" />
@@ -149,7 +149,7 @@ export default function HRDashboardLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

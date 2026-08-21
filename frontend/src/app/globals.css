@@ -9,8 +9,28 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-heading);
+
+  /* New Design Tokens */
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-slate: var(--slate);
+  --color-slate-light: var(--slate-light);
+  --color-signal: var(--signal);
+  --color-signal-light: var(--signal-light);
+  --color-gate: var(--gate);
+  --color-pass: var(--pass);
+  --color-pass-light: var(--pass-light);
+  
+  /* Signal Segments */
+  --color-seg-skill: var(--seg-skill);
+  --color-seg-experience: var(--seg-experience);
+  --color-seg-title: var(--seg-title);
+  --color-seg-years: var(--seg-years);
+
+  /* Shadcn standard overrides */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -19,15 +39,12 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -40,6 +57,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -50,72 +68,113 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* TalentLens Base Tokens */
+  --paper: #F6F7FB;
+  --panel: #FFFFFF;
+  --ink: #14151A;
+  --slate: #6B7280;
+  --slate-light: #E4E6EE;
+  --signal: #2E4BFF;
+  --signal-light: #E9EDFF;
+  --gate: #FF4F32;
+  --pass: #1FAE7A;
+  --pass-light: #E8F8F1;
+  
+  /* Signal Segments */
+  --seg-skill: #7F77DD;
+  --seg-experience: #5DCAA5;
+  --seg-title: #F0997B;
+  --seg-years: #85B7EB;
+
+  /* Shadcn Mappings */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  
+  --card: var(--panel);
+  --card-foreground: var(--ink);
+  
+  --popover: var(--panel);
+  --popover-foreground: var(--ink);
+  
+  --primary: var(--signal);
+  --primary-foreground: #FFFFFF;
+  
+  --secondary: var(--slate-light);
+  --secondary-foreground: var(--ink);
+  
+  --muted: var(--slate-light);
+  --muted-foreground: var(--slate);
+  
+  --accent: var(--signal-light);
+  --accent-foreground: var(--signal);
+  
+  --destructive: var(--gate);
+  --destructive-foreground: #FFFFFF;
+  
+  --border: var(--slate-light);
+  --input: var(--slate-light);
+  --ring: var(--signal);
+  
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Sidebar Mappings */
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--signal);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--signal-light);
+  --sidebar-accent-foreground: var(--signal);
+  --sidebar-border: var(--slate-light);
+  --sidebar-ring: var(--signal);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* We maintain the dark mode structure but the prompt says "do not redesign the palette... generic light-mode SaaS... replace with distinctive identity".
+     If dark mode is needed, we map it inverted, but for now we keep the same token approach and adjust if dark mode is explicitly tested. */
+  --paper: #09090B;
+  --panel: #14151A;
+  --ink: #F6F7FB;
+  --slate: #A1A1AA;
+  --slate-light: #27272A;
+  --signal: #3b82f6;
+  --signal-light: rgba(59, 130, 246, 0.2);
+  --gate: #ef4444;
+  --pass: #22c55e;
+  --pass-light: rgba(34, 197, 94, 0.2);
+  
+  --seg-skill: #7F77DD;
+  --seg-experience: #5DCAA5;
+  --seg-title: #F0997B;
+  --seg-years: #85B7EB;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--panel);
+  --card-foreground: var(--ink);
+  --popover: var(--panel);
+  --popover-foreground: var(--ink);
+  --primary: var(--signal);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--slate-light);
+  --secondary-foreground: var(--ink);
+  --muted: var(--slate-light);
+  --muted-foreground: var(--slate);
+  --accent: var(--signal-light);
+  --accent-foreground: var(--signal);
+  --destructive: var(--gate);
+  --destructive-foreground: #FFFFFF;
+  --border: var(--slate-light);
+  --input: var(--slate-light);
+  --ring: var(--signal);
+  
+  --sidebar: var(--panel);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--signal);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: var(--signal-light);
+  --sidebar-accent-foreground: var(--signal);
+  --sidebar-border: var(--slate-light);
+  --sidebar-ring: var(--signal);
 }
 
 @layer base {
@@ -125,8 +184,8 @@
   body {
     @apply bg-background text-foreground;
   }
-  html {
-    @apply font-sans;
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
   }
 }
 
